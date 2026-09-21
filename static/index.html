@@ -1,0 +1,516 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="night">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Burhanuddin Malik</title>
+<meta name="description" id="mdesc" content="Creating with Purpose. Exploring with Curiosity. Growing with Every Journey.">
+<meta name="theme-color" content="#0e1731">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Amiri:wght@400;700&family=Hanken+Grotesk:wght@400;500;600&family=Instrument+Serif:ital@0;1&display=swap" rel="stylesheet">
+<style>
+
+:root[data-theme="night"]{--bg:#0e1731;--bg2:#17234d;--ink:#f4eedd;--muted:#a9b2cc;--accent:#d0a84f;--atext:#d0a84f;--on:#0e1731;--line:rgba(244,238,221,.16)}
+:root[data-theme="emerald"]{--bg:#0c2a22;--bg2:#143a2f;--ink:#f3ecd8;--muted:#a5bdb2;--accent:#d1a94d;--atext:#d1a94d;--on:#0c2a22;--line:rgba(243,236,216,.16)}
+:root[data-theme="minimal"]{--bg:#ffffff;--bg2:#f3f1ec;--ink:#26272b;--muted:#64656b;--accent:#b8964a;--atext:#856822;--on:#ffffff;--line:rgba(38,39,43,.16)}
+:root[data-theme="classic"]{--bg:#3d0d19;--bg2:#58162b;--ink:#f6ecd9;--muted:#d2b8b8;--accent:#d4ac5b;--atext:#d4ac5b;--on:#3d0d19;--line:rgba(246,236,217,.18)}
+:root[data-theme="blue"]{--bg:#0a2540;--bg2:#103659;--ink:#ffffff;--muted:#a8bdd4;--accent:#2bc4b4;--atext:#2bc4b4;--on:#062033;--line:rgba(255,255,255,.18)}
+*{box-sizing:border-box;margin:0}
+html{scroll-behavior:smooth}
+body{background:var(--bg);color:var(--ink);font:400 17px/1.7 'Hanken Grotesk',system-ui,sans-serif;transition:background .4s,color .4s;-webkit-font-smoothing:antialiased}
+h1,h2,h3{font-family:'Instrument Serif',Georgia,serif;font-weight:400;line-height:1.08;letter-spacing:-.01em}
+h1{font-size:clamp(2.8rem,8vw,5.6rem)}
+h2{font-size:clamp(2rem,4.5vw,3.1rem)}
+h3{font-size:1.5rem}
+p{max-width:62ch}
+a{color:inherit}
+img,svg{max-width:100%}
+.ar{font-family:'Amiri',serif;direction:rtl}
+:focus-visible{outline:2px solid var(--accent);outline-offset:3px;border-radius:4px}
+.wrap{width:min(1180px,100% - 2.5rem);margin-inline:auto}
+section{padding:clamp(3.5rem,8vw,6.5rem) 0}
+.muted{color:var(--muted)}
+.sr{position:absolute;left:-9999px}
+
+/* header */
+header.top{position:sticky;top:0;z-index:20;background:color-mix(in srgb,var(--bg) 88%,transparent);backdrop-filter:blur(10px);border-bottom:1px solid var(--line)}
+.bar{display:flex;align-items:center;gap:1.2rem;min-height:64px}
+.brand{font-family:'Instrument Serif',serif;font-size:1.5rem;text-decoration:none;margin-right:auto}
+nav.main{display:flex;gap:1.6rem}
+nav.main a{text-decoration:none;color:var(--muted);padding:.3rem 0;border-bottom:1px solid transparent;transition:color .2s,border-color .2s}
+nav.main a:hover,nav.main a[aria-current=page]{color:var(--ink);border-color:var(--accent)}
+.menu{display:none;background:none;border:1px solid var(--line);color:var(--ink);border-radius:8px;padding:.35rem .8rem;font:inherit;cursor:pointer}
+details.themes{position:relative}
+details.themes summary{list-style:none;cursor:pointer;display:flex;align-items:center;gap:.5rem;color:var(--muted);font-size:.9rem}
+details.themes summary::-webkit-details-marker{display:none}
+.dot{width:16px;height:16px;border-radius:50%;border:1px solid var(--line);display:inline-block;background:linear-gradient(135deg,var(--bg2) 50%,var(--accent) 50%)}
+.tpop{position:absolute;right:0;top:2.2rem;background:var(--bg2);border:1px solid var(--line);border-radius:12px;padding:.5rem;display:grid;gap:.15rem;min-width:170px;box-shadow:0 12px 40px rgba(0,0,0,.28)}
+.tpop button{display:flex;align-items:center;gap:.6rem;background:none;border:0;color:var(--ink);font:inherit;font-size:.95rem;padding:.45rem .6rem;border-radius:8px;cursor:pointer;text-align:left}
+.tpop button:hover,.tpop button[aria-pressed=true]{background:var(--line)}
+.sw{width:18px;height:18px;border-radius:50%;border:1px solid var(--line)}
+@media(max-width:820px){
+ .menu{display:block}
+ nav.main{position:absolute;left:0;right:0;top:64px;background:var(--bg);border-bottom:1px solid var(--line);flex-direction:column;gap:0;padding:.5rem 1.25rem 1rem;display:none}
+ nav.main.open{display:flex}
+ nav.main a{padding:.8rem 0;border-bottom:1px solid var(--line)}
+}
+
+/* buttons */
+.btn{display:inline-block;padding:.85rem 1.6rem;border-radius:999px;text-decoration:none;font-weight:500;border:1px solid var(--accent);cursor:pointer;font:inherit;font-weight:500;transition:transform .2s,background .2s}
+.btn.solid{background:var(--accent);color:var(--on)}
+.btn.ghost{background:transparent;color:var(--ink)}
+.btn:hover{transform:translateY(-2px)}
+.row{display:flex;flex-wrap:wrap;gap:.9rem}
+.link{color:var(--atext);text-decoration:underline;text-underline-offset:4px;text-decoration-thickness:1px}
+
+/* hero */
+.hero{padding-top:clamp(2.5rem,6vw,5rem)}
+.hero .wrap{display:grid;grid-template-columns:1.15fr .85fr;gap:clamp(2rem,6vw,5rem);align-items:center}
+.hero h1{margin-bottom:1.1rem}
+.tag{font-family:'Instrument Serif',serif;font-style:italic;font-size:clamp(1.25rem,2.6vw,1.7rem);color:var(--atext);margin-bottom:1.4rem;max-width:26ch;line-height:1.25}
+.hero p.intro{color:var(--muted);margin-bottom:2rem}
+.arch{position:relative;aspect-ratio:3/4;max-width:400px;justify-self:center;width:100%}
+.arch::before{content:"";position:absolute;inset:-14px;border:1px solid var(--accent);border-radius:999px 999px 14px 14px;opacity:.55}
+.arch .in{position:absolute;inset:0;border-radius:999px 999px 10px 10px;overflow:hidden;background:linear-gradient(170deg,var(--bg2),color-mix(in srgb,var(--bg2) 60%,var(--accent)));display:grid;place-items:center;text-align:center;color:var(--muted);font-size:.95rem;padding:2rem}
+.arch svg{width:44%;margin-bottom:.8rem;opacity:.7}
+@media(prefers-reduced-motion:no-preference){
+ .hero .wrap>div:first-child>*{animation:rise .9s cubic-bezier(.2,.7,.2,1) both}
+ .hero .wrap>div:first-child>*:nth-child(2){animation-delay:.12s}
+ .hero .wrap>div:first-child>*:nth-child(3){animation-delay:.24s}
+ .hero .wrap>div:first-child>*:nth-child(4){animation-delay:.36s}
+ .arch{animation:fade 1.4s .2s both}
+ @keyframes rise{from{opacity:0;transform:translateY(18px)}}
+ @keyframes fade{from{opacity:0}}
+}
+@media(max-width:820px){.hero .wrap{grid-template-columns:1fr}.arch{order:-1;max-width:260px}}
+
+/* generic */
+.head{display:flex;justify-content:space-between;align-items:end;gap:1rem;margin-bottom:2.2rem;flex-wrap:wrap}
+.band{background:var(--bg2)}
+.grid{display:grid;gap:1.6rem;grid-template-columns:repeat(auto-fill,minmax(250px,1fr))}
+.ph{aspect-ratio:4/3;border-radius:6px;background:repeating-linear-gradient(45deg,transparent 0 14px,var(--line) 14px 15px),linear-gradient(160deg,var(--bg2),color-mix(in srgb,var(--bg2) 70%,var(--accent)));display:grid;place-items:center;color:var(--muted);font-size:.85rem;text-align:center;padding:1rem;border:1px solid var(--line)}
+.band .ph{background:repeating-linear-gradient(45deg,transparent 0 14px,var(--line) 14px 15px),linear-gradient(160deg,var(--bg),color-mix(in srgb,var(--bg) 70%,var(--accent)))}
+.card{display:block;text-decoration:none;position:relative}
+.card .ph{transition:transform .35s}
+.card:hover .ph{transform:scale(1.015)}
+.card h3{margin:.9rem 0 .2rem}
+.meta{display:flex;gap:.7rem;align-items:center;font-size:.88rem;color:var(--muted);margin-bottom:.5rem}
+.pill{border:1px solid var(--line);border-radius:999px;padding:.05rem .7rem}
+.star{position:absolute;top:.7rem;left:.7rem;background:var(--accent);color:var(--on);font-size:.78rem;font-weight:600;padding:.15rem .7rem;border-radius:999px}
+.card p{color:var(--muted);font-size:.97rem;margin-bottom:.6rem}
+.chips{display:flex;flex-wrap:wrap;gap:.5rem;margin-bottom:2rem}
+.chip{background:none;border:1px solid var(--line);color:var(--ink);border-radius:999px;padding:.4rem 1.1rem;font:inherit;font-size:.93rem;cursor:pointer}
+.chip[aria-pressed=true]{background:var(--accent);color:var(--on);border-color:var(--accent)}
+.search{background:transparent;border:1px solid var(--line);color:var(--ink);border-radius:999px;padding:.45rem 1.1rem;font:inherit;font-size:.93rem;min-width:200px}
+.empty{padding:3rem 0;color:var(--muted)}
+
+/* about */
+.split{display:grid;grid-template-columns:1fr 1fr;gap:clamp(2rem,5vw,4.5rem);align-items:center}
+@media(max-width:820px){.split{grid-template-columns:1fr}}
+.pillars{display:grid;gap:1.4rem;grid-template-columns:repeat(auto-fit,minmax(240px,1fr))}
+.pillars>div{border-top:1px solid var(--accent);padding-top:1rem}
+.pillars h3{margin-bottom:.4rem}
+.pillars p{color:var(--muted);font-size:.98rem}
+.quote{font-family:'Instrument Serif',serif;font-size:clamp(1.6rem,3.6vw,2.4rem);line-height:1.25;max-width:24ch}
+
+/* journey */
+.tl{display:flex;flex-direction:column;gap:0;position:relative;padding-left:1.6rem;border-left:1px solid var(--accent)}
+.ms{position:relative;padding:0 0 2.2rem 1.4rem}
+.ms::before{content:"";position:absolute;left:calc(-1.6rem - 6px);top:.55rem;width:11px;height:11px;border-radius:50%;background:var(--accent);box-shadow:0 0 0 5px var(--bg)}
+.ms .when{color:var(--atext);font-size:.9rem}
+.ms h3{margin:.15rem 0 .3rem}
+.ms p{color:var(--muted);font-size:.98rem;margin-bottom:.5rem}
+.ms button{background:none;border:0;color:var(--atext);font:inherit;text-decoration:underline;text-underline-offset:4px;cursor:pointer;padding:0}
+@media(min-width:900px){
+ .tl.h{flex-direction:row;overflow-x:auto;border-left:0;padding:2.4rem 0 1.5rem;gap:1.4rem;scroll-snap-type:x proximity;border-top:1px solid var(--accent)}
+ .tl.h .ms{flex:0 0 280px;padding:1.6rem 0 0;scroll-snap-align:start}
+ .tl.h .ms::before{left:0;top:-2.4rem;transform:translateY(-3px)}
+}
+
+/* dialogs */
+dialog{border:1px solid var(--line);background:var(--bg2);color:var(--ink);border-radius:16px;padding:0;width:min(640px,100% - 2rem);max-height:88vh;overflow:auto}
+dialog::backdrop{background:rgba(3,8,24,.7);backdrop-filter:blur(3px)}
+dialog[open]{animation:pop .25s ease-out}
+@keyframes pop{from{opacity:0;transform:translateY(12px) scale(.98)}}
+.dlg{padding:clamp(1.4rem,4vw,2.4rem)}
+.dlg h2{font-size:2rem;margin-bottom:.8rem}
+.x{position:absolute;right:.8rem;top:.6rem;background:none;border:0;color:var(--ink);font-size:1.8rem;cursor:pointer;line-height:1;padding:.3rem .6rem}
+dialog.lb{width:min(920px,100% - 1rem)}
+.lbnav{display:flex;justify-content:space-between;gap:1rem;margin-top:1rem}
+
+/* case study */
+.cs h1{font-size:clamp(2.4rem,7vw,4.6rem)}
+.facts{display:flex;flex-wrap:wrap;gap:1.2rem 2.4rem;margin:1.6rem 0 2.4rem}
+.facts div span{display:block;font-size:.85rem;color:var(--muted)}
+.facts div b{font-weight:500;font-size:1.05rem}
+.block{display:grid;grid-template-columns:200px 1fr;gap:1rem 2.5rem;padding:2rem 0;border-top:1px solid var(--line)}
+.block h2{font-size:1.7rem}
+.block p+p{margin-top:.9rem}
+.block ul{padding-left:1.1rem;color:var(--muted)}
+.block li+li{margin-top:.35rem}
+@media(max-width:700px){.block{grid-template-columns:1fr}}
+.steps{display:flex;flex-wrap:wrap;gap:.6rem;align-items:center}
+.steps span{border:1px solid var(--accent);border-radius:999px;padding:.3rem 1rem;font-size:.95rem}
+.steps i{color:var(--muted);font-style:normal}
+.gal3{display:grid;gap:1rem;grid-template-columns:repeat(auto-fit,minmax(200px,1fr))}
+.eye{max-width:520px;margin:.5rem 0 1rem}
+.eye [data-eye]{cursor:pointer;transition:opacity .2s}
+.eye [data-eye]:hover{opacity:.8}
+.eyeinfo{min-height:5.5rem;border-left:2px solid var(--accent);padding-left:1rem;color:var(--muted)}
+
+/* gallery */
+.mason{columns:3 240px;column-gap:1.4rem}
+.mason .card{break-inside:avoid;margin-bottom:1.6rem}
+@media(max-width:600px){.mason{columns:2;column-gap:.9rem}.mason .card h3{font-size:1.2rem}}
+.tall .ph{aspect-ratio:3/4}
+.sq .ph{aspect-ratio:1}
+
+/* forms */
+form.f{display:grid;gap:1rem;max-width:560px}
+label{display:grid;gap:.35rem;font-size:.95rem;color:var(--muted)}
+input[type=text],input[type=email],textarea{background:transparent;border:1px solid var(--line);color:var(--ink);border-radius:10px;padding:.75rem 1rem;font:inherit}
+textarea{min-height:140px;resize:vertical}
+.rate{display:flex;justify-content:space-between;align-items:center;gap:1rem}
+.stars button{background:none;border:0;font-size:1.5rem;color:var(--line);cursor:pointer;padding:0 .1rem}
+.stars button.on{color:var(--accent)}
+.note{padding:.9rem 1.1rem;border:1px solid var(--accent);border-radius:10px;color:var(--ink);font-size:.95rem}
+footer{border-top:1px solid var(--line);padding:2.4rem 0;color:var(--muted);font-size:.95rem}
+footer .wrap{display:flex;flex-wrap:wrap;justify-content:space-between;gap:1rem}
+footer a{text-decoration:none}
+
+/* --- additions --- */
+.im{display:block;width:100%;aspect-ratio:4/3;object-fit:cover;border-radius:6px;border:1px solid var(--line);background:var(--bg2)}
+.arch .in img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}
+.tall .im{aspect-ratio:3/4}.sq .im{aspect-ratio:1}
+.card .im{transition:transform .35s}.card:hover .im{transform:scale(1.015)}
+.hero-img .im{aspect-ratio:16/9}
+.art{max-width:720px;margin-inline:auto}
+.art h1{font-size:clamp(2.2rem,6vw,4rem);margin:.6rem 0 1.4rem}
+.art .im{aspect-ratio:16/9;margin-bottom:2rem}
+.art .body p{margin-bottom:1.2rem;max-width:none;font-size:1.08rem;line-height:1.8}
+.art .body h2{font-size:1.9rem;margin:2.2rem 0 .8rem}
+.loading{min-height:60vh;display:grid;place-items:center;color:var(--muted)}
+.interests{display:flex;flex-wrap:wrap;gap:.6rem;margin-top:1.4rem}
+.interests span{border:1px solid var(--line);border-radius:999px;padding:.3rem 1rem;font-size:.93rem}
+.hp{position:absolute;left:-9999px;height:0;overflow:hidden}
+.privacy{font-size:.85rem;color:var(--muted);margin-top:.8rem}
+.by{font-size:.85rem}
+@media(max-width:820px){.brand{font-size:1.2rem;white-space:nowrap}.bar{gap:.7rem}}
+a.in,button.term{color:inherit;text-decoration:underline dotted var(--accent);text-underline-offset:4px;background:none;border:0;font:inherit;padding:0;cursor:pointer}
+a.in:hover,button.term:hover{text-decoration-style:solid}
+a.quiet{opacity:.7}
+details.block{display:block;border-top:1px solid var(--line);padding:1.3rem 0}
+details.block summary{display:flex;justify-content:space-between;align-items:center;cursor:pointer;list-style:none}
+details.block summary::-webkit-details-marker{display:none}
+details.block summary::after{content:"+";font-size:1.6rem;color:var(--atext);line-height:1}
+details.block[open] summary::after{content:"\2212"}
+details.block .bd{margin-top:1rem;max-width:70ch}
+details.block .bd p+p{margin-top:.9rem}
+.ms .ph,.ms .im{aspect-ratio:16/10;margin:.7rem 0}
+.tl.h .ms .ph,.tl.h .ms .im{margin-top:.5rem}
+.areas{display:grid;grid-template-columns:1fr 1fr;gap:1rem;margin:1.2rem 0}
+.areas>div{border:1px solid var(--line);border-radius:10px;padding:1rem}
+.areas h3{font-size:1.3rem;color:var(--atext);margin-bottom:.2rem}
+.areas p{font-size:.95rem;color:var(--muted)}
+.closing{font-family:'Instrument Serif',serif;font-style:italic;font-size:1.6rem;color:var(--atext);margin-top:1.2rem}
+.edu{display:grid;gap:1rem;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));margin:1.4rem 0}
+.edu>div{border:1px solid var(--line);border-radius:10px;padding:1.1rem}
+.edu b{display:block;font-family:'Instrument Serif',serif;font-size:2rem;font-weight:400;color:var(--atext);line-height:1.1}
+.edu span{color:var(--muted);font-size:.93rem}
+.path{color:var(--muted);font-size:.98rem;max-width:none}
+.soon{font-size:.78rem;border:1px dashed var(--accent);color:var(--atext);border-radius:999px;padding:.05rem .7rem}
+@media(max-width:520px){.areas{grid-template-columns:1fr}}
+</style>
+</head>
+<body>
+<a class="sr" href="#main">Skip to content</a>
+<header class="top">
+ <div class="wrap bar">
+  <a class="brand" href="/" data-l>Burhanuddin Malik</a>
+  <nav class="main" id="nav" aria-label="Main"></nav>
+  <details class="themes" id="themes"><summary><span class="dot"></span>Theme</summary><div class="tpop" id="tpop"></div></details>
+  <button class="menu" id="menu" aria-expanded="false" aria-controls="nav">Menu</button>
+ </div>
+</header>
+<main id="main" tabindex="-1"><div class="loading">Loading…</div></main>
+<noscript><p style="padding:2rem">This website needs JavaScript to display its content.</p></noscript>
+<footer><div class="wrap">
+ <span>© <span id="yr"></span> Burhanuddin Malik</span>
+ <span>Creating with Purpose. Exploring with Curiosity. Growing with Every Journey.</span>
+ <span class="privacy" style="flex-basis:100%">This site counts visits in aggregate, without cookies or personal data. <a class="quiet" href="/private">Private Portal</a></span>
+</div></footer>
+<dialog id="dlg" aria-label="Details"><button class="x" aria-label="Close" data-close>×</button><div class="dlg" id="dbody"></div></dialog>
+<dialog id="lb" class="lb" aria-label="Image viewer"><button class="x" aria-label="Close" data-close>×</button><div class="dlg" id="lbody"></div></dialog>
+
+<script>
+"use strict";
+const $=(s,r=document)=>r.querySelector(s),$$=(s,r=document)=>[...r.querySelectorAll(s)];
+const esc=s=>String(s??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+const safeUrl=s=>/^(\/(?!\/)|https?:\/\/|mailto:)/.test(s||"")?s:"";
+const store={get(k){try{return localStorage.getItem(k)}catch(e){return null}},set(k,v){try{localStorage.setItem(k,v)}catch(e){}}};
+const PREVIEW=new URLSearchParams(location.search).get("preview")==="1";
+const THEMES=[["night","Royal Night","#d0a84f"],["emerald","Emerald","#143a2f"],["minimal","Minimal","#f3f1ec"],["classic","Classic","#58162b"],["blue","Modern Blue","#2bc4b4"]];
+const WCATS=["All","Paintings","Khat","Sketches","Maaraz","Other"],KNOWN=["Paintings","Khat","Sketches","Maaraz"];
+const ACATS=["All","Artistic","Sports","Leadership","Certifications","Presentations","Recognition"];
+const BCATS=["Khat","Knowledge","Psychology","AI","Technology","Business","Reflections"];
+const EYE={"iris-a":"The left half of the iris stands for divine serenity.","iris-b":"The right half of the iris stands for worldly allure. Both halves are radiant, because the painting is about harmony, not conflict.",figures:"Twin brothers, Faith and Worldly Realm, sit back-to-back in the pupil. Faith illuminates the world, and the worldly realm can give faith practical form: two reflections of one truth."};
+let C={projects:[],gallery:[],journey:[],achievements:[],posts:[],settings:{}};
+
+/* ---------- theme ---------- */
+function setTheme(id){document.documentElement.dataset.theme=id;store.set("theme",id);$$("#tpop button").forEach(b=>b.setAttribute("aria-pressed",b.dataset.t===id));const m=$('meta[name=theme-color]');if(m)m.content=getComputedStyle(document.documentElement).getPropertyValue("--bg").trim()}
+$("#tpop").innerHTML=THEMES.map(t=>`<button data-t="${t[0]}"><span class="sw" style="background:${t[2]}"></span>${t[1]}</button>`).join("");
+$("#tpop").addEventListener("click",e=>{const b=e.target.closest("button");if(b){setTheme(b.dataset.t);$("#themes").open=false}});
+setTheme(THEMES.some(t=>t[0]===store.get("theme"))?store.get("theme"):"night");
+$("#yr").textContent=new Date().getFullYear();
+const NAV=[["Home","/"],["About","/about"],["Journey","/journey"],["Work","/work"],["Blog","/blog"],["Contact","/contact"]];
+$("#nav").innerHTML=NAV.map(n=>`<a href="${n[1]}" data-l data-path="${n[1]}">${n[0]}</a>`).join("");
+$("#menu").onclick=()=>{const o=$("#nav").classList.toggle("open");$("#menu").setAttribute("aria-expanded",o)};
+
+/* ---------- helpers ---------- */
+const ph=l=>`<div class="ph"><span>${esc(l||"Image to be added")}</span></div>`;
+const pic=(src,label,cls="")=>safeUrl(src)?`<img class="im ${cls}" src="${esc(safeUrl(src))}" alt="${esc(label)}" loading="lazy">`:ph(label);
+const A=(href,inner,cls="")=>`<a href="${esc(href)}" data-l${cls?` class="${cls}"`:""}>${inner}</a>`;
+const meta=p=>`<div class="meta">${p.year?`<span>${esc(p.year)}</span>`:""}${p.cat?`<span class="pill">${esc(p.cat)}</span>`:""}</div>`;
+const arr=x=>Array.isArray(x)?x:[];
+const norm=p=>({...p,facts:arr(p.facts),sections:arr(p.sections),timeline:arr(p.timeline),techniques:arr(p.techniques),challenges:arr(p.challenges),images:arr(p.images),roleList:arr(p.roleList)});
+const P=slug=>C.projects.find(p=>p.slug===slug);
+/* internal hyperlinks + small glossary popups, applied automatically to story text (first mention only) */
+const LINKS=[["Planetarium Maaraz","/work/planetarium-maaraz"],["Darajah Haadi Ashara Backdrop","/work/darajah-haadi-ashara-backdrop"],["Darajah Haadi Ashara backdrop","/work/darajah-haadi-ashara-backdrop"],["Darajah Haadi backdrop","/work/darajah-haadi-ashara-backdrop"],["Maaraz Ilmi 1447H","/work/maaraz-ilmi-1447h"],["Faith & Worldly Realm","/work/faith-and-worldly-realm"],["Zareeh Mubarak","/work/zareeh-mubarak"],["Aljamea-tus-Saifiyah Surat","/journey#aljamea-surat"],["Aljamea Surat","/journey#aljamea-surat"],["Aljamea-tus-Saifiyah Marol","/journey#aljamea-marol"],["Aljamea Marol","/journey#aljamea-marol"],["Thuluth","/work/learning-thuluth"],["AI","/about#learning"]];
+const TERMS={"Zareeh":"The ornate enclosure built over a grave. Here it refers to the Zareeh Mubarak of Moulana Ali AS in Najaf.","Glazing":"A painting technique that builds depth by laying thin, transparent layers of colour over dry paint.","Tazheeb":"The art of illumination: decorating pages and calligraphy with gold and ornament.","Ustaaz":"A teacher or master, here a calligraphy teacher.","Maaraz":"An exhibition. A Maaraz Ilmi is an exhibition of knowledge.","Imtehaan Safahi":"An oral examination.","Khat":"Arabic calligraphy."};
+const RX=new RegExp("\\b("+[...LINKS.map(x=>x[0]),...Object.keys(TERMS)].sort((a,b)=>b.length-a.length).map(s=>s.replace(/[.*+?^${}()|[\]\\]/g,"\\$&")).join("|")+")\\b","g");
+let CUR="",CURJ="";
+function rich(t){const seen=new Set();return String(t??"").split(RX).map((p,i)=>{
+ if(i%2===0)return esc(p);if(seen.has(p))return esc(p);
+ const L=LINKS.find(x=>x[0]===p);
+ if(L){if((CUR&&L[1].endsWith("/"+CUR))||(CURJ&&L[1].endsWith("#"+CURJ)))return esc(p);seen.add(p);return `<a class="in" href="${L[1]}" data-l>${esc(p)}</a>`}
+ seen.add(p);return `<button type="button" class="term" data-term="${esc(p)}">${esc(p)}</button>`}).join("")}
+const paras=t=>String(t||"").split(/\n{2,}/).map(x=>`<p>${rich(x).replace(/\n/g,"<br>")}</p>`).join("");
+function md(t){return String(t||"").split(/\n{2,}/).map(p=>/^## /.test(p)?`<h2>${esc(p.slice(3))}</h2>`:`<p>${rich(p).replace(/\*\*(.+?)\*\*/g,"<strong>$1</strong>").replace(/\n/g,"<br>")}</p>`).join("")}
+const projCard=p=>A("/work/"+p.slug,`${pic(p.cover,p.title)}<h3>${esc(p.title)}</h3>${meta(p)}<p>${esc(p.short)}</p><span class="link">View case study</span>`,"card");
+const chips=(list,cur,attr)=>`<div class="chips">${list.map(c=>`<button class="chip" ${attr}="${esc(c)}" aria-pressed="${c===cur}">${esc(c)}</button>`).join("")}</div>`;
+const socials=()=>{const s=C.settings;return [["Instagram",s.instagram],["WhatsApp",s.whatsapp],["Gmail",s.email&&"mailto:"+s.email]].filter(x=>safeUrl(x[1])).map(x=>`<a class="link" href="${esc(x[1])}" target="_blank" rel="noopener">${x[0]}</a>`).join(" &nbsp; ")};
+const person=`<svg viewBox="0 0 100 100" aria-hidden="true"><circle cx="50" cy="36" r="18" fill="none" stroke="currentColor" stroke-width="2"/><path d="M14 92c4-24 20-34 36-34s32 10 36 34" fill="none" stroke="currentColor" stroke-width="2"/></svg>`;
+const archBox=(src,label)=>`<div class="arch"><div class="in">${safeUrl(src)?`<img src="${esc(safeUrl(src))}" alt="${esc(label)}">`:`<div>${person}<div>${esc(label)}</div></div>`}</div></div>`;
+const fmtDate=s=>{try{return new Date(s).toLocaleDateString(undefined,{year:"numeric",month:"long",day:"numeric"})}catch(e){return s||""}};
+
+/* ---------- analytics (no cookies, no personal data; respects Do Not Track) ---------- */
+const DNT=navigator.doNotTrack==="1";let sid=null,acc=0,last=0,vis=true,first=true;
+const beacon=o=>{if(DNT)return;try{navigator.sendBeacon("/api/track",new Blob([JSON.stringify(o)],{type:"application/json"}))}catch(e){}};
+const rid=()=>Math.random().toString(36).slice(2,10)+Date.now().toString(36);
+function sendTime(){if(!sid)return;beacon({ev:"time",sid,secs:acc+(vis?(Date.now()-last)/1000:0)})}
+function trackView(extra={}){sendTime();sid=rid();acc=0;last=Date.now();const q=new URLSearchParams(location.search);
+ beacon({ev:"view",sid,path:location.pathname,nav:first?0:1,ref:first?document.referrer:"",src:first?(q.get("src")||""):"",w:innerWidth,...extra});first=false}
+document.addEventListener("visibilitychange",()=>{if(document.visibilityState==="hidden"){acc+=(Date.now()-last)/1000;vis=false;sendTime()}else{vis=true;last=Date.now()}});
+addEventListener("pagehide",sendTime);
+
+/* ---------- views ---------- */
+const V={};
+V.home=()=>{const feat=C.projects.filter(p=>p.featured).slice(0,4),posts=C.posts.slice(0,3);return `
+<section class="hero"><div class="wrap">
+ <div><h1>Burhanuddin Malik</h1>
+  <p class="tag">Creating with Purpose. Exploring with Curiosity. Growing with Every Journey.</p>
+  <p class="intro">I’m Burhanuddin Malik — a creative learner and curious explorer with a growing interest in art, communication, technology, and entrepreneurship. This portfolio brings together the work, experiences, and ideas that continue to shape my journey.</p>
+  <div class="row">${A("/work","Explore My Work","btn solid")}${A("/journey","Explore My Journey","btn ghost")}</div></div>
+ ${archBox(C.settings.hero_photo,"Professional photograph goes here")}
+</div></section>
+${feat.length?`<section><div class="wrap"><div class="head"><h2>Featured work</h2>${A("/work","See all work","link")}</div><div class="grid">${feat.map(projCard).join("")}</div></div></section>`:""}
+<section class="band"><div class="wrap split">
+ <div><h2>Explore my journey</h2><p class="muted" style="margin:1rem 0 1.6rem">From Mumbai and Indore to Aljamea, from a first sketch to large-scale paintings, and now business and technology. Each chapter has its own story.</p>${A("/journey","Open the timeline","btn ghost")}</div>
+ <div class="tl">${C.journey.slice(0,4).map(m=>`<div class="ms"><span class="when">${esc(m.period)}</span><h3>${esc(m.title)}</h3></div>`).join("")}</div>
+</div></section>
+<section><div class="wrap split">
+ <p class="quote">A journey shaped by curiosity, creativity, and continuous learning.</p>
+ <div><p class="muted" style="margin-bottom:1.4rem">I used to be shy and reserved. Time at Aljamea helped me grow comfortable with crowds, communication, questions and responsibility. Today art, calligraphy, technology and business all shape how I learn.</p>${A("/about","More about me","link")}</div>
+</div></section>
+<section class="band"><div class="wrap"><div class="head"><h2>Latest articles</h2>${A("/blog","Visit the blog","link")}</div>${postGrid(posts)}</div></section>
+<section><div class="wrap split"><h2>Let’s talk about art, ideas, or something you’re building.</h2><div>${A("/contact","Get in touch","btn solid")}</div></div></section>`};
+
+const postGrid=l=>l.length?`<div class="grid">${l.map(p=>A("/blog/"+p.slug,`${pic(p.cover,p.title)}<h3>${esc(p.title)}</h3><div class="meta">${p.soon?`<span class="soon">Coming soon</span>`:`<span>${esc(fmtDate(p.date||p.created))}</span>`}${p.category?`<span class="pill">${esc(p.category)}</span>`:""}</div><p>${esc(p.excerpt)}</p>`,"card")).join("")}</div>`:`<p class="muted">The first articles are on their way.</p>`;
+
+V.about=()=>`
+<section><div class="wrap"><h1 style="font-size:clamp(2.2rem,6vw,4.2rem);max-width:18ch">A journey shaped by curiosity, creativity, and continuous learning.</h1></div></section>
+<section class="band" id="who"><div class="wrap split">
+ ${archBox(C.settings.about_photo,"Photograph to be added")}
+ <div><h2 style="margin-bottom:1rem">Who I am</h2>
+ ${paras("I’m an artist, a learner and a future entrepreneur. I was born in Mumbai, brought up in Indore, and I now study B.Com at Burhani College.\n\nMy interests move between art, Arabic calligraphy, technology, AI, communication, public speaking, psychology, business and entrepreneurship. One theme runs through all of them: learning through doing.")}
+ <div class="interests">${["Art","Arabic calligraphy","Technology","AI","Communication","Public speaking","Psychology","Business","Entrepreneurship","Learning","Personal growth"].map(i=>`<span>${i}</span>`).join("")}</div></div>
+</div></section>
+<section id="growth"><div class="wrap split">
+ <div><h2 style="margin-bottom:1rem">My growth</h2>
+ ${paras("I was shy, reserved and introverted. Joining Aljamea-tus-Saifiyah Surat put me among larger groups and new people, with new responsibilities: communication, collaboration, public speaking and everyday social interaction.\n\nIt wasn’t an overnight change. Comfort came gradually, through one conversation, one role and one responsibility at a time. One lesson stayed with me: asking questions is part of learning, not a sign of weakness.")}
+ <p style="margin-top:1rem">${A("/journey#aljamea-surat","Read this chapter","link")}</p></div>
+ ${ph("Photograph to be added")}
+</div></section>
+<section class="band"><div class="wrap"><div class="pillars">
+ <div id="creativity"><h3>Creativity</h3>${paras("It began around Standard 4 with a small A5 sunset painting made in a painting class, which my teacher appreciated. That grew gradually into sketching, painting, large canvases, Arabic handwriting, calligraphy and Maaraz decoration.\n\nKhat has become both a technical and an intellectual discipline for me, especially through a two-month course on Thuluth from Misr.")}</div>
+ <div id="curiosity"><h3>Curiosity</h3>${paras("Psychology, technology, AI and business keep me asking questions. I’m learning Python, Django and web development, and exploring how AI can help me build things. These are areas I’m learning, not areas I’ve mastered.")}</div>
+ <div id="drives"><h3>What drives me</h3>${paras("Helping others, patience, calmness, continuous learning and creativity.")}</div>
+</div></div></section>
+<section id="education"><div class="wrap"><h2>Education</h2>
+ <div class="edu"><div><b>73%</b><span>10th</span></div><div><b>76%</b><span>12th, Commerce</span></div><div><b>B.Com</b><span>Burhani College, current</span></div></div>
+ <p class="path">A convent school in Mumbai for pre-primary, then MSB Educational Institute in Indore until Grade 9, then Aljamea-tus-Saifiyah Surat for about four years, and later Aljamea-tus-Saifiyah Marol.</p>
+ <p style="margin-top:1rem">${A("/journey","See the full journey","link")}</p></div></section>
+<section class="band" id="learning"><div class="wrap"><h2>What I’m learning</h2>
+ <p class="muted" style="margin:1rem 0 0">Right now I’m studying and experimenting with:</p>
+ <div class="interests">${["Khat","Tazheeb","AI","Python","Django","Web development","Communication","Psychology","Business","Entrepreneurship"].map(i=>`<span>${rich(i)}</span>`).join("")}</div>
+ <p style="margin-top:1.4rem">${A("/journey#technology-and-ai","How I started building","link")}</p></div></section>`;
+
+V.journey=()=>`<section><div class="wrap">
+ <h1 style="font-size:clamp(2.4rem,6vw,4.4rem)">My journey</h1>
+ <p class="muted" style="margin:1rem 0 2.4rem">Open any chapter to read its story.</p>
+ <div class="tl h" tabindex="0" aria-label="Journey timeline, scrolls sideways">${C.journey.map((m,i)=>`<div class="ms" id="${esc(m.slug)}"><span class="when">${esc(m.period)}</span><h3>${esc(m.title)}</h3>${pic(m.image,m.title)}<p>${esc(m.short)}</p><button data-ms="${i}">Explore story</button></div>`).join("")}</div>
+</div></section>`;
+const storyHTML=m=>{CURJ=m.slug;try{return storyInner(m)}finally{CURJ=""}};
+const storyInner=m=>`<span class="when muted">${esc(m.period)}</span><h2>${esc(m.title)}</h2>${paras(m.story||m.short)}
+ ${arr(m.areas).length?`<div class="areas">${m.areas.map(a=>`<div><h3>${esc(a[0])}</h3><p>${esc(a[1])}</p></div>`).join("")}</div>`:""}
+ ${arr(m.points).length?`<div class="interests">${m.points.map(p=>`<span>${rich(p)}</span>`).join("")}</div>`:""}
+ ${m.closing?`<p class="closing">${esc(m.closing)}</p>`:""}
+ <div style="margin-top:1.2rem">${pic(m.image,m.title)}</div>`;
+
+let wf="All",wq="",gf="All",gq="",af="All",bf="All",LBL=[],LBI=0;
+const catOk=(cat,f)=>f==="All"||cat===f||(f==="Other"&&!KNOWN.includes(cat));
+V.work=()=>`<section><div class="wrap">
+ <div class="head"><h1 style="font-size:clamp(2.4rem,6vw,4.4rem)">Work</h1><input class="search" id="wq" type="search" placeholder="Search work" aria-label="Search work" value="${esc(wq)}"></div>
+ ${chips(WCATS,wf,"data-wf")}<div id="wgrid"></div><p style="margin-top:2rem">${A("/work/gallery","Open the visual gallery","link")}</p></div></section>`;
+const drawWork=()=>{const l=C.projects.filter(p=>catOk(p.cat,wf)&&(p.title+" "+p.short).toLowerCase().includes(wq.toLowerCase()));
+ $("#wgrid").innerHTML=l.length?`<div class="grid">${l.map(projCard).join("")}</div>`:`<p class="empty">Nothing here yet.</p>`;$$("[data-wf]").forEach(b=>b.setAttribute("aria-pressed",b.dataset.wf===wf))};
+
+const eyeSVG=()=>`<svg class="eye" viewBox="0 0 400 240" role="img" aria-label="Painting of an eye with two figures in the pupil">
+ <path d="M14 120Q200-20 386 120Q200 260 14 120Z" fill="var(--bg2)" stroke="var(--accent)" stroke-width="2"/>
+ <path data-eye="iris-a" d="M200 40a80 80 0 0 0 0 160Z" fill="var(--accent)" opacity=".9"/><path data-eye="iris-b" d="M200 40a80 80 0 0 1 0 160Z" fill="var(--ink)" opacity=".55"/>
+ <g data-eye="figures"><circle cx="200" cy="120" r="34" fill="var(--bg)"/><circle cx="189" cy="112" r="6" fill="var(--accent)"/><path d="M181 140q0-18 8-18t8 18Z" fill="var(--accent)"/><circle cx="211" cy="112" r="6" fill="var(--ink)"/><path d="M203 140q0-18 8-18t8 18Z" fill="var(--ink)"/></g></svg>`;
+
+const blk=(title,inner,open)=>`<details class="block"${open?" open":""}><summary><h2>${esc(title)}</h2></summary><div class="bd">${inner}</div></details>`;
+V.case=slug=>{const p0=P(slug);if(!p0)return V.nf();const p=norm(p0),rel=C.projects.filter(x=>x.slug!==slug&&(x.cat===p.cat)).concat(C.projects.filter(x=>x.slug!==slug&&x.cat!==p.cat)).slice(0,3);
+ return `<section class="cs"><div class="wrap">${A("/work","Back to work","link")}
+ <div style="margin-top:1.4rem">${meta(p)}<h1>${esc(p.title)}</h1>${p.arabic?`<p class="ar" style="font-size:1.8rem;margin-top:1rem;max-width:none">${esc(p.arabic)}</p>`:""}</div>
+ <div style="margin-top:2rem">${p.cover?`<a href="#" data-pimg="-1" aria-label="View image larger">${pic(p.cover,p.title)}</a>`:ph(p.title+": main image to be added")}</div>
+ <div class="facts">${p.facts.map(f=>`<div><span>${esc(f[0])}</span><b>${esc(f[1])}</b></div>`).join("")}</div>
+ <div class="row" style="margin-bottom:1.6rem">${p.roleList.length?`<button class="btn ghost" data-role="1">My role</button>`:""}<button class="btn ghost" id="xall" data-xall="1">${p.sections.length>2?"Expand all":"Collapse all"}</button></div>
+ ${p.sections.map((s,i)=>blk(s[0],paras(s[1]),i<2)).join("")}
+ ${p.interactive==="eye"?blk("Explore the painting",eyeSVG()+`<div class="eyeinfo" id="eyeinfo">Tap the iris or the two figures to see what they mean.</div>`,true):""}
+ ${p.timeline.length?blk("Timeline",`<div class="steps">${p.timeline.map((s,i)=>(i?`<i>›</i>`:"")+`<span>${esc(s)}</span>`).join("")}</div>`,true):""}
+ ${p.techniques.length?blk("Techniques",`<div class="steps">${p.techniques.map(t=>`<span>${rich(t)}</span>`).join("")}</div>`,true):""}
+ ${p.challenges.length?blk("Challenges",`<ul>${p.challenges.map(c=>`<li>${esc(c)}</li>`).join("")}</ul>`,true):""}
+ ${p.result?blk("Result",paras(p.result),true):""}
+ ${p.learned?blk("What I learned",paras(p.learned),true):""}
+ ${blk("Gallery",`<div class="gal3" style="max-width:none">${p.images.length?p.images.map((im,i)=>`<a href="#" data-pimg="${i}">${pic(im,p.title+" image "+(i+1))}</a>`).join(""):[1,2,3].map(()=>ph()).join("")}</div>`,true)}
+ <div style="border-top:1px solid var(--line);padding-top:1.6rem"><h2 style="margin-bottom:1.2rem">Related work</h2><div class="grid">${rel.map(projCard).join("")}</div></div></div></section>`};
+const galItems=()=>C.gallery.length?C.gallery.map(g=>({slug:g.slug,title:g.title,cat:g.category,year:g.year,desc:g.description,image:g.image,href:g.project?"/work/"+g.project:""}))
+ :C.projects.map(p=>({slug:p.slug,title:p.title,cat:p.cat,year:p.year,desc:p.short,image:p.cover,href:"/work/"+p.slug}));
+V.gallery=()=>`<section><div class="wrap"><div class="head"><h1 style="font-size:clamp(2.4rem,6vw,4.4rem)">Gallery</h1><input class="search" id="gq" type="search" placeholder="Search artworks" aria-label="Search artworks" value="${esc(gq)}"></div>
+ ${chips(WCATS,gf,"data-gf")}<div id="ggrid"></div></div></section>`;
+const drawGal=()=>{LBL=galItems().filter(g=>catOk(g.cat,gf)&&g.title.toLowerCase().includes(gq.toLowerCase()));
+ $("#ggrid").innerHTML=LBL.length?`<div class="mason">${LBL.map((g,i)=>`<a class="card ${["tall","sq",""][i%3]}" href="#" data-lb="${i}">${pic(g.image,g.title)}<h3>${esc(g.title)}</h3>${meta(g)}</a>`).join("")}</div>`:`<p class="empty">Nothing here yet.</p>`;
+ $$("[data-gf]").forEach(b=>b.setAttribute("aria-pressed",b.dataset.gf===gf))};
+function showLb(i,list){if(list)LBL=list;LBI=(i+LBL.length)%LBL.length;const g=LBL[LBI];
+ $("#lbody").innerHTML=`<h2>${esc(g.title)}</h2>${meta(g)}${pic(g.image,g.title)}${g.desc?`<p style="margin-top:1rem" class="muted">${esc(g.desc)}</p>`:""}${g.cat?`<p style="margin-top:.8rem"><button class="link" data-wfgo="${esc(g.cat)}" style="background:none;border:0;cursor:pointer;font:inherit">More ${esc(g.cat)} work</button></p>`:""}<div class="lbnav"><button class="btn ghost" data-lbn="-1">Previous</button>${g.href?A(g.href,"View project","btn solid").replace("<a ","<a data-close "):""}<button class="btn ghost" data-lbn="1">Next</button></div>`;
+ if(!$("#lb").open)$("#lb").showModal();if(g.slug&&!list)beacon({ev:"view",sid:rid(),kind:"art",slug:g.slug,path:"/work/gallery",nav:1,w:innerWidth})}
+
+V.achievements=()=>`<section><div class="wrap"><h1 style="font-size:clamp(2.4rem,6vw,4.4rem);margin-bottom:2rem">Achievements</h1>${chips(ACATS,af,"data-af")}<div id="agrid"></div></div></section>`;
+const drawAch=()=>{const l=C.achievements.filter(a=>af==="All"||a.cat===af);
+ $("#agrid").innerHTML=l.length?`<div class="grid">${l.map(a=>`<button class="card" style="text-align:left;background:none;color:inherit;font:inherit;cursor:pointer;padding:1.2rem;border:1px solid var(--line);border-radius:10px" data-ach="${C.achievements.indexOf(a)}"><div class="meta"><span class="pill">${esc(a.cat)}</span></div><h3>${esc(a.title)}</h3><span class="link">Details</span></button>`).join("")}</div>`:`<p class="empty">Nothing here yet.</p>`;
+ $$("[data-af]").forEach(b=>b.setAttribute("aria-pressed",b.dataset.af===af))};
+
+V.blog=()=>`<section><div class="wrap"><h1 style="font-size:clamp(2.4rem,6vw,4.4rem);margin-bottom:1.6rem">Blog</h1>${chips(["All",...BCATS],bf,"data-bf")}<div id="bgrid"></div></div></section>`;
+const drawBlog=()=>{$("#bgrid").innerHTML=postGrid(C.posts.filter(p=>bf==="All"||p.category===bf));$$("[data-bf]").forEach(b=>b.setAttribute("aria-pressed",b.dataset.bf===bf))};
+async function articleView(slug){
+ const r=await fetch("/api/post/"+encodeURIComponent(slug)+(PREVIEW?"?preview=1":""));if(!r.ok)return V.nf();const p=await r.json();
+ const relP=C.posts.filter(x=>x.slug!==slug&&x.category===p.category).slice(0,3);
+ const keys=String(p.related||"").split(/[\n,]+/).map(s=>s.trim()).filter(Boolean);
+ const relW=keys.map(k=>P(k)).filter(Boolean),relJ=keys.map(k=>C.journey.find(m=>m.slug===k)).filter(Boolean);
+ return `<section><div class="wrap"><article class="art">${A("/blog","Back to blog","link")}${p.status==="draft"?`<p class="note" style="margin-top:1rem">Draft preview. Only you can see this.</p>`:""}
+ <h1>${esc(p.title)}</h1><div class="meta">${p.soon?`<span class="soon">Coming soon</span>`:`<span>${esc(fmtDate(p.date||p.created))}</span>`}${p.category?`<span class="pill">${esc(p.category)}</span>`:""}</div>
+ ${p.cover?`<div style="margin-top:1.4rem">${pic(p.cover,p.title)}</div>`:""}
+ <div class="body" style="margin-top:1.6rem">${p.soon&&!p.body?`<p class="muted">${esc(p.excerpt)}</p><p class="note">This article is still being written and will appear here when it’s ready.</p>`:md(p.body)}</div></article>
+ ${relJ.length?`<div style="margin-top:3rem"><h2 style="margin-bottom:1rem">Related chapters</h2><p>${relJ.map(m=>A("/journey#"+m.slug,esc(m.title),"link")).join(" &nbsp; ")}</p></div>`:""}
+ ${relW.length?`<div style="margin-top:3rem"><h2 style="margin-bottom:1.4rem">Related projects</h2><div class="grid">${relW.map(projCard).join("")}</div></div>`:""}
+ ${relP.length?`<div style="margin-top:4rem"><h2 style="margin-bottom:1.4rem">Related articles</h2>${postGrid(relP)}</div>`:""}
+ <p style="margin-top:3rem">${A("/blog","Back to blog","link")}</p></div></section>`}
+
+const stars=n=>`<div class="rate"><span>${n}</span><span class="stars" data-rate="${n}">${[1,2,3,4,5].map(i=>`<button type="button" aria-label="${n}: ${i} of 5" data-s="${i}">★</button>`).join("")}</span></div>`;
+V.contact=()=>`<section><div class="wrap split" style="align-items:start">
+ <div><h1 style="font-size:clamp(2.4rem,6vw,4.4rem);margin-bottom:1.4rem">Contact</h1>
+  <form class="f" id="cf"><label>Name<input type="text" name="name" required maxlength="100" autocomplete="name"></label><label>Email<input type="email" name="email" required maxlength="200" autocomplete="email"></label><label>Message<textarea name="message" required maxlength="4000"></textarea></label>
+  <div class="hp" aria-hidden="true"><label>Website<input type="text" name="website" tabindex="-1" autocomplete="off"></label></div>
+  <div><button class="btn solid" type="submit">Send message</button></div><div id="cmsg" role="status"></div></form>
+  ${socials()?`<p style="margin-top:1.6rem">${socials()}</p>`:""}</div>
+ <div><h2 style="margin-bottom:1rem">Anonymous feedback</h2><p class="muted" style="margin-bottom:1.2rem">Tell me how the site feels. No account needed.</p>
+  <form class="f" id="ff">${["Design","Content","Navigation","Overall Experience"].map(stars).join("")}<label>Comment (optional)<textarea name="comment" maxlength="1000"></textarea></label><div><button class="btn ghost" type="submit">Send feedback</button></div><div id="fmsg" role="status"></div></form></div>
+</div></section>`;
+V.nf=()=>`<section><div class="wrap"><h1>Page not found</h1><p style="margin:1rem 0">That page doesn’t exist.</p>${A("/","Back to home","link")}</div></section>`;
+
+/* ---------- router ---------- */
+const TITLES={about:"About",journey:"Journey",work:"Work",blog:"Blog",contact:"Contact",achievements:"Achievements"};
+async function route(){
+ const seg=location.pathname.split("/").filter(Boolean);let html,title="Burhanuddin Malik",ex={};CUR=(seg[0]==="work"&&seg[1]&&seg[1]!=="gallery")?seg[1]:"";
+ if(!seg.length)html=V.home();
+ else if(seg[0]==="work"&&seg[1]==="gallery"){html=V.gallery();title="Gallery | "+title}
+ else if(seg[0]==="work"&&seg[1]){const p=P(seg[1]);html=V.case(seg[1]);if(p){title=p.title+" | "+title;ex={kind:"project",slug:p.slug}}}
+ else if(seg[0]==="blog"&&seg[1]){html=await articleView(seg[1]);const p=C.posts.find(x=>x.slug===seg[1]);if(p){title=p.title+" | "+title;ex={kind:"post",slug:p.slug}}}
+ else if(V[seg[0]]&&TITLES[seg[0]]){html=V[seg[0]]();title=TITLES[seg[0]]+" | "+title}
+ else html=V.nf();
+ $("#main").innerHTML=html;document.title=title;
+ $("#mdesc").content=title==="Burhanuddin Malik"?"Creating with Purpose. Exploring with Curiosity. Growing with Every Journey.":title;
+ window.scrollTo(0,0);$("#main").focus({preventScroll:true});
+ $$("#nav a").forEach(a=>{const on=a.dataset.path==="/"?!seg.length:seg[0]&&a.dataset.path==="/"+seg[0];on?a.setAttribute("aria-current","page"):a.removeAttribute("aria-current")});
+ $("#nav").classList.remove("open");$("#menu").setAttribute("aria-expanded","false");
+ if(seg[0]==="work"&&!seg[1])drawWork();if(seg[0]==="work"&&seg[1]==="gallery")drawGal();
+ if(seg[0]==="achievements")drawAch();if(seg[0]==="blog"&&!seg[1])drawBlog();
+ trackView(ex);
+ if(location.hash.length>1){const id=decodeURIComponent(location.hash.slice(1)),el=document.getElementById(id);
+  if(el){el.scrollIntoView({block:"start"});if(seg[0]==="journey"){const i=C.journey.findIndex(m=>m.slug===id);if(i>=0)setTimeout(()=>openDlg(storyHTML(C.journey[i])),350)}}}
+}
+function go(u){history.pushState({},"",u);route()}
+addEventListener("popstate",route);
+
+/* ---------- interactions ---------- */
+const dlg=$("#dlg"),openDlg=h=>{$("#dbody").innerHTML=h;dlg.showModal()};
+document.addEventListener("click",e=>{
+ const t=e.target;let b;
+ const l=t.closest("a[data-l]");
+ if(l&&!e.metaKey&&!e.ctrlKey&&!e.shiftKey&&l.getAttribute("href")[0]==="/"){e.preventDefault();$$("dialog[open]").forEach(d=>d.close());go(l.getAttribute("href"));return}
+ if(t.closest("[data-close]")){const d=t.closest("dialog");if(d)d.close()}
+ if(b=t.closest("[data-ms]")){openDlg(storyHTML(C.journey[b.dataset.ms]))}
+ if(b=t.closest("[data-term]")){openDlg(`<h2>${esc(b.dataset.term)}</h2><p>${esc(TERMS[b.dataset.term]||"")}</p>`)}
+ if(b=t.closest("[data-wfgo]")){$("#lb").close();wf=KNOWN.includes(b.dataset.wfgo)?b.dataset.wfgo:"Other";go("/work")}
+ if(b=t.closest("[data-xall]")){const ds=$$("details.block"),allOpen=ds.every(d=>d.open);ds.forEach(d=>d.open=!allOpen);b.textContent=allOpen?"Expand all":"Collapse all"}
+ if(b=t.closest("[data-wf]")){wf=b.dataset.wf;drawWork()}
+ if(b=t.closest("[data-gf]")){gf=b.dataset.gf;drawGal()}
+ if(b=t.closest("[data-af]")){af=b.dataset.af;drawAch()}
+ if(b=t.closest("[data-bf]")){bf=b.dataset.bf;drawBlog()}
+ if(b=t.closest("[data-lb]")){e.preventDefault();showLb(+b.dataset.lb)}
+ if(b=t.closest("[data-pimg]")){e.preventDefault();const p=norm(P(location.pathname.split("/")[2]));const list=[p.cover&&{title:p.title,image:p.cover,cat:p.cat,year:p.year},...p.images.map((im,i)=>({title:p.title+" image "+(i+1),image:im,cat:p.cat,year:p.year}))].filter(Boolean);
+  const i=+b.dataset.pimg;showLb(i<0?0:(p.cover?i+1:i),list)}
+ if(b=t.closest("[data-lbn]"))showLb(LBI+ +b.dataset.lbn);
+ if(b=t.closest("[data-ach]")){const a=C.achievements[b.dataset.ach];openDlg(`<div class="meta"><span class="pill">${esc(a.cat)}</span></div><h2>${esc(a.title)}</h2>${a.image?pic(a.image,a.title):""}<h3 style="margin-top:1rem;font-size:1.2rem" class="muted">What I did</h3>${paras(a.details)}${a.learned?`<h3 style="margin-top:1rem;font-size:1.2rem" class="muted">What I learned</h3>${paras(a.learned)}`:""}${a.recognition?`<h3 style="margin-top:1rem;font-size:1.2rem" class="muted">Recognition</h3>${paras(a.recognition)}`:""}${a.project&&P(a.project)?`<p style="margin-top:1rem">${A("/work/"+a.project,"View the project","link")}</p>`:""}`)}
+ if(t.closest("[data-role]")){const p=P(location.pathname.split("/")[2]);openDlg(`<h2>My role</h2><ul style="padding-left:1.1rem">${arr(p.roleList).map(r=>`<li>${esc(r)}</li>`).join("")}</ul>`)}
+ if(b=t.closest("[data-eye]")){$("#eyeinfo").textContent=EYE[b.dataset.eye]}
+ if(b=t.closest("[data-s]")){const g=b.parentElement;g.dataset.val=b.dataset.s;$$("button",g).forEach(x=>x.classList.toggle("on",+x.dataset.s<=+b.dataset.s))}
+ if(t===dlg||t===$("#lb"))t.close();
+});
+document.addEventListener("input",e=>{if(e.target.id==="wq"){wq=e.target.value;drawWork()}if(e.target.id==="gq"){gq=e.target.value;drawGal()}});
+document.addEventListener("keydown",e=>{if($("#lb").open){if(e.key==="ArrowRight")showLb(LBI+1);if(e.key==="ArrowLeft")showLb(LBI-1)}});
+let sx=0;const lbx=$("#lb");
+lbx.addEventListener("touchstart",e=>sx=e.touches[0].clientX,{passive:true});
+lbx.addEventListener("touchend",e=>{const d=e.changedTouches[0].clientX-sx;if(Math.abs(d)>50)showLb(LBI+(d<0?1:-1))});
+
+async function send(url,data,el,ok){
+ el.innerHTML="";
+ try{const r=await fetch(url,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(data)});const j=await r.json().catch(()=>({}));
+  el.innerHTML=`<div class="note">${esc(r.ok?ok:(j.error||"Something went wrong. Please try again."))}</div>`;return r.ok}
+ catch(_){el.innerHTML=`<div class="note">Couldn’t reach the server. Check your connection and try again.</div>`;return false}}
+document.addEventListener("submit",async e=>{
+ if(e.target.id==="cf"){e.preventDefault();if(await send("/api/contact",Object.fromEntries(new FormData(e.target)),$("#cmsg"),"Thank you. Your message was sent."))e.target.reset()}
+ if(e.target.id==="ff"){e.preventDefault();const r={};$$(".stars",e.target).forEach(s=>r[s.dataset.rate]=+s.dataset.val||null);if(await send("/api/feedback",{ratings:r,comment:e.target.comment.value},$("#fmsg"),"Thank you for your feedback."))e.target.reset()}
+});
+
+/* ---------- start ---------- */
+(async()=>{
+ try{const r=await fetch("/api/content"+(PREVIEW?"?preview=1":""));if(r.ok){C=await r.json();C.projects=C.projects.map(norm)}}catch(e){}
+ route();
+})();
+</script>
+</body>
+</html>

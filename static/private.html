@@ -1,0 +1,92 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex,nofollow">
+<title>Private Portal | Burhanuddin Malik</title>
+<link href="https://fonts.googleapis.com/css2?family=Amiri&family=Hanken+Grotesk:wght@400;500;600&family=Instrument+Serif:ital@0;1&display=swap" rel="stylesheet">
+<style>
+:root{--bg:#0e1731;--bg2:#16224a;--ink:#f4eedd;--muted:#a9b2cc;--gold:#d0a84f;--on:#0e1731;--line:rgba(244,238,221,.15)}
+*{box-sizing:border-box;margin:0}
+body{background:var(--bg);color:var(--ink);font:400 17px/1.7 'Hanken Grotesk',system-ui,sans-serif}
+h1,h2,h3{font-family:'Instrument Serif',Georgia,serif;font-weight:400;line-height:1.15}
+a{color:var(--gold)}[hidden]{display:none!important}
+.wrap{width:min(860px,100% - 2rem);margin-inline:auto}
+header{border-bottom:1px solid var(--line);padding:1rem 0}header .wrap{display:flex;justify-content:space-between;align-items:center;gap:1rem}
+.brand{white-space:nowrap;font-family:'Instrument Serif',serif;font-size:1.4rem;text-decoration:none;color:var(--ink)}
+button,.btn{font:inherit;cursor:pointer;border-radius:999px;border:1px solid var(--line);background:none;color:var(--ink);padding:.4rem 1.1rem;text-decoration:none;display:inline-block}
+button:hover{border-color:var(--gold)}.pri{background:var(--gold);color:var(--on);border-color:var(--gold);font-weight:600;width:100%;border-radius:10px;padding:.7rem}
+input{font:inherit;background:var(--bg);color:var(--ink);border:1px solid var(--line);border-radius:10px;padding:.7rem .9rem;width:100%;margin:.3rem 0 1rem}
+label{font-size:.9rem;color:var(--muted)}
+:focus-visible{outline:2px solid var(--gold);outline-offset:3px}
+#login{min-height:80vh;display:grid;place-items:center;padding:1rem}
+#login form{background:var(--bg2);border:1px solid var(--line);border-radius:16px;padding:2rem;width:min(400px,100%)}
+.tabs{display:flex;flex-wrap:wrap;gap:.5rem;margin:1.6rem 0}
+.tabs button[aria-pressed=true]{background:var(--gold);color:var(--on);border-color:var(--gold)}
+.entry{border-top:1px solid var(--line);padding:1.6rem 0}
+.entry h3{font-size:1.7rem;margin-bottom:.2rem}
+.meta{color:var(--muted);font-size:.9rem;margin-bottom:.8rem}
+.entry p{margin-bottom:.9rem}
+.entry img{max-width:100%;border-radius:10px;border:1px solid var(--line);margin:.6rem 0}
+.banner{background:var(--bg2);border:1px solid var(--gold);border-radius:10px;padding:.8rem 1rem;margin-top:1.4rem}
+.err{color:#e88}.muted{color:var(--muted)}
+</style>
+</head>
+<body>
+<header><div class="wrap"><a class="brand" href="/">Burhanuddin Malik</a><span><span id="who" class="muted"></span> <button id="out" hidden>Sign out</button></span></div></header>
+<div id="login" hidden>
+ <form id="lf"><h1 style="font-size:2rem;margin-bottom:.3rem">Private Portal</h1><p class="muted" style="margin-bottom:1.2rem;font-size:.95rem">Enter the password you were given.</p>
+  <div id="urow" hidden><label for="u">Username</label><input id="u" name="username" autocomplete="username"></div>
+  <label for="p">Password</label><input id="p" name="password" type="password" autocomplete="current-password" required>
+  <button class="pri">Open</button><p id="err" class="err" role="alert" style="margin-top:.8rem"></p>
+  <p style="margin-top:1rem;font-size:.9rem"><a href="#" id="tg">I have a personal username</a></p></form>
+</div>
+<main class="wrap" id="main" hidden>
+ <div id="banner"></div>
+ <div class="tabs" id="tabs" role="group" aria-label="Sections"></div>
+ <div id="list"></div>
+</main>
+<script>
+"use strict";
+const $=s=>document.querySelector(s);
+const esc=s=>String(s??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+const safe=u=>/^\/(?!\/)/.test(u||"")?u:"";
+const q=new URLSearchParams(location.search),PV=[];
+if(q.get("as"))PV.push("as_level="+encodeURIComponent(q.get("as")));
+if(q.get("as_user"))PV.push("as_user="+encodeURIComponent(q.get("as_user")));
+let CSRF="",cur="",D=null;
+async function me(){const r=await fetch("/api/me");return r.json()}
+function showLogin(){$("#login").hidden=false;$("#main").hidden=true;$("#out").hidden=true;$("#who").textContent=""}
+let useUser=false;
+$("#tg").onclick=e=>{e.preventDefault();useUser=!useUser;$("#urow").hidden=!useUser;$("#u").required=useUser;$("#tg").textContent=useUser?"I only have a password":"I have a personal username";(useUser?$("#u"):$("#p")).focus()};
+$("#lf").onsubmit=async e=>{e.preventDefault();$("#err").textContent="";
+ const body=Object.fromEntries(new FormData(e.target));if(!useUser)delete body.username;
+ const r=await fetch(useUser?"/api/login":"/api/private/unlock",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(body)});
+ const j=await r.json().catch(()=>({}));
+ if(!r.ok){$("#err").textContent=j.error||"Sign-in failed.";return}
+ if(j.role==="owner"&&!PV.length){location.href="/admin";return}
+ CSRF=j.csrf||"";load()};
+$("#out").onclick=async()=>{await fetch("/api/logout",{method:"POST",headers:{"X-CSRF":CSRF}});location.href="/private"};
+async function load(){
+ const r=await fetch("/api/private/items"+(PV.length?"?"+PV.join("&"):""));
+ if(r.status===401){showLogin();return}
+ D=await r.json();$("#login").hidden=true;$("#main").hidden=false;$("#out").hidden=false;$("#who").textContent=D.name;
+ $("#banner").innerHTML=PV.length&&D.owner?`<div class="banner">Previewing as <b>${esc(D.label)}</b>. This is exactly what that viewer sees. It is read-only. <a href="/admin">Back to dashboard</a></div>`:D.owner?`<div class="banner">Signed in as owner. <a href="/admin">Open dashboard</a></div>`:"";
+ cur=D.sections[0]?.key||"";draw()}
+function draw(){
+ $("#tabs").innerHTML=D.sections.map(s=>`<button aria-pressed="${s.key===cur}" data-k="${s.key}">${esc(s.label)}</button>`).join("");
+ const items=D.items.filter(i=>i.kind===cur);
+ $("#list").innerHTML=D.sections.length?(items.length?items.map(entry).join(""):`<p class="muted">Nothing in this section yet.</p>`):`<p class="muted" style="margin-top:2rem">There's nothing shared with you yet.</p>`}
+const paras=t=>String(t||"").split(/\n{2,}/).filter(Boolean).map(x=>`<p>${esc(x).replace(/\n/g,"<br>")}</p>`).join("");
+function entry(i){const d=i.data,when=d.date||d.year||"";
+ const body=d.text||d.details||"";
+ return `<article class="entry"><h3>${esc(i.title)}</h3><div class="meta">${esc(when)}${d.from?` · ${esc(d.from)}`:""}${i.status==="draft"?" · draft":""}</div>${paras(body)}
+ ${d.project&&/^[a-z0-9-]+$/.test(d.project)?`<p class="muted">Related public page: <a href="/work/${esc(d.project)}">${esc(d.project)}</a></p>`:""}
+ ${(Array.isArray(d.images)?d.images:[]).filter(safe).map(u=>`<img src="${esc(safe(u))}" alt="" loading="lazy">`).join("")}
+ ${safe(d.image)?`<img src="${esc(safe(d.image))}" alt="${esc(i.title)}" loading="lazy">`:""}${safe(d.file)?`<p><a class="btn" href="${esc(safe(d.file))}">Open file</a></p>`:""}</article>`}
+document.addEventListener("click",e=>{const b=e.target.closest("[data-k]");if(b){cur=b.dataset.k;draw()}});
+(async()=>{const m=await me();if(m.role){CSRF=m.csrf;if(m.role==="owner"&&!PV.length){location.href="/admin";return}load()}else showLogin()})();
+</script>
+</body>
+</html>

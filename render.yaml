@@ -1,0 +1,20 @@
+# One-click setup for Render (render.com): New > Blueprint > pick your GitHub repository.
+services:
+  - type: web
+    name: burhan-site
+    runtime: docker
+    plan: starter          # a paid plan is needed so the database and photos survive restarts
+    healthCheckPath: /healthz
+    disk:
+      name: data
+      mountPath: /data
+      sizeGB: 2
+    envVars:
+      - key: SECRET_KEY
+        generateValue: true
+      - key: OWNER_PASSWORD
+        sync: false        # Render will ask you for this when you create the service
+      - key: HTTPS
+        value: "1"
+      - key: DATA_DIR
+        value: /data
