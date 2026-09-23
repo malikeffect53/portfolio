@@ -111,9 +111,11 @@ a:focus-visible,button:focus-visible,.btn:focus-visible,input:focus-visible,sele
 .act-table tr{border-bottom:1px solid var(--line);transition:background .15s}
 .act-table td{padding:.65rem .75rem;vertical-align:middle;font-size:13px}
 .act-table tr:hover td{background:rgba(255,255,255,.025)}
-.act-warn-row{background:rgba(255,123,123,.07)!important;border-left:3px solid var(--bad)}
+.act-warn-row{background:rgba(255,123,123,.08)!important;border-left:3px solid var(--bad)!important}
+.act-warn-row td{background:rgba(255,123,123,.025)}
+.sec-badge{background:rgba(255,123,123,.18);color:#ff9e9e;border:1px solid rgba(255,123,123,.4);font-size:11px;font-weight:700;padding:1px 7px;border-radius:999px;letter-spacing:.03em;display:inline-flex;align-items:center;gap:3px}
 .count-pill{background:rgba(208,168,79,.2);color:var(--gold);border:1px solid rgba(208,168,79,.35);font-weight:700;padding:1px 6px;border-radius:999px;font-size:11px}
-.act-time{white-space:nowrap;font-size:13px;color:var(--muted);width:95px}
+.act-time{white-space:nowrap;font-size:13px;color:var(--muted);width:105px}
 .row{display:flex;flex-wrap:wrap;gap:.6rem;align-items:center}
 table{width:100%;border-collapse:collapse;font-size:.92rem}
 th,td{text-align:left;padding:.6rem .75rem;border-bottom:1px solid var(--line);vertical-align:middle;font-size:13.5px}
@@ -221,19 +223,12 @@ dialog::backdrop{background:rgba(3,8,24,.75);backdrop-filter:blur(3px)}
     </div>
     <div style="position:relative">
      <button class="btn pri sm" id="newmenu-btn">+ New ▾</button>
-     <div id="newmenu" style="display:none;position:absolute;right:0;top:38px;background:var(--bg2);border:1px solid var(--line);border-radius:10px;padding:.4rem;min-width:200px;box-shadow:0 12px 30px rgba(0,0,0,.5);z-index:90">
-      <div style="font-size:11px;text-transform:uppercase;color:var(--gold);padding:.25rem .6rem;letter-spacing:.08em;font-weight:700">Website Content</div>
-      <a class="btn sm" style="width:100%;border:0;justify-content:flex-start" href="#/edit/project/new">📁 New Project</a>
-      <a class="btn sm" style="width:100%;border:0;justify-content:flex-start" href="#/edit/gallery/new">🎨 New Artwork</a>
-      <a class="btn sm" style="width:100%;border:0;justify-content:flex-start" href="#/edit/post/new">📝 New Blog Article</a>
-      <a class="btn sm" style="width:100%;border:0;justify-content:flex-start" href="#/edit/journey/new">🧭 New Milestone</a>
-      <a class="btn sm" style="width:100%;border:0;justify-content:flex-start" href="#/edit/achievement/new">🏆 New Achievement</a>
-      <div style="border-top:1px solid var(--line);margin:.4rem 0"></div>
-      <div style="font-size:11px;text-transform:uppercase;color:var(--gold);padding:.25rem .6rem;letter-spacing:.08em;font-weight:700">Assets & Archive</div>
-      <a class="btn sm" style="width:100%;border:0;justify-content:flex-start" href="#/media">🖼️ Upload Media</a>
-      <a class="btn sm" style="width:100%;border:0;justify-content:flex-start" href="#/edit/detail/new">📋 New Archive Detail</a>
-      <a class="btn sm" style="width:100%;border:0;justify-content:flex-start" href="#/edit/journal/new">📓 New Journal Entry</a>
-      <a class="btn sm" style="width:100%;border:0;justify-content:flex-start" href="#/edit/file/new">📄 New Document</a>
+     <div id="newmenu" style="display:none;position:absolute;right:0;top:38px;background:var(--bg2);border:1px solid var(--line);border-radius:10px;padding:.4rem;min-width:180px;box-shadow:0 12px 30px rgba(0,0,0,.5);z-index:90">
+      <a class="btn sm" style="width:100%;border:0;justify-content:flex-start" href="#/edit/project/new">📁 Project</a>
+      <a class="btn sm" style="width:100%;border:0;justify-content:flex-start" href="#/edit/gallery/new">🎨 Artwork</a>
+      <a class="btn sm" style="width:100%;border:0;justify-content:flex-start" href="#/edit/post/new">📝 Post</a>
+      <a class="btn sm" style="width:100%;border:0;justify-content:flex-start" href="#/edit/journey/new">🧭 Milestone</a>
+      <a class="btn sm" style="width:100%;border:0;justify-content:flex-start" href="#/media">🖼️ Upload</a>
      </div>
     </div>
    </div>
@@ -270,11 +265,11 @@ function timeAgo(dateInput){
  const diffSec=Math.floor((Date.now()-d.getTime())/1000);
  if(diffSec<45)return "just now";
  const diffMin=Math.floor(diffSec/60);
- if(diffMin<60)return diffMin+"m ago";
+ if(diffMin<60)return diffMin===1?"1 min ago":`${diffMin} min ago`;
  const diffHr=Math.floor(diffMin/60);
- if(diffHr<24)return diffHr+"h ago";
+ if(diffHr<24)return diffHr===1?"1 hour ago":`${diffHr} hours ago`;
  const diffDays=Math.floor(diffHr/24);
- if(diffDays<7)return diffDays+(diffDays===1?"d ago":"d ago");
+ if(diffDays<7)return diffDays===1?"1 day ago":`${diffDays} days ago`;
  return d.toLocaleDateString("en-IN",{timeZone:"Asia/Kolkata",day:"numeric",month:"short"});
 }
 
@@ -289,73 +284,178 @@ function fullIST(dateInput){
   day:"numeric",
   hour:"numeric",
   minute:"2-digit",
+  second:"2-digit",
   hour12:true
  })+" IST";
 }
 
 function timeSpan(dateInput){
  if(!dateInput)return "";
- return `<time datetime="${esc(dateInput)}" title="${esc(fullIST(dateInput))}" style="cursor:help">${esc(timeAgo(dateInput))}</time>`;
+ const rel=timeAgo(dateInput);
+ const full=fullIST(dateInput);
+ return `<time datetime="${esc(dateInput)}" title="${esc(full)} (Asia/Kolkata IST)" style="cursor:help;border-bottom:1px dotted rgba(203,213,240,.4)">${esc(rel)}</time>`;
 }
 
 const fdate=s=>timeSpan(s);
 
-const OBJ_MAP={
- home_name:"Home: Display Name",
- home_tagline:"Home: Tagline",
- home_intro:"Home: Introduction",
- about_title:"About: Page Title",
- about_who_text:"About: Who I Am",
- about_growth_text:"About: Growth & Learning",
- hero_photo:"Hero Profile Photo",
- about_photo:"About Profile Photo",
- linkedin:"LinkedIn Profile",
- whatsapp:"WhatsApp Contact",
- email:"Contact Email"
+const FIELD_LABELS={
+ home_name:"Home name",
+ home_tagline:"tagline",
+ home_intro:"introduction",
+ hero_title:"Hero title",
+ hero_subtitle:"Hero subtitle",
+ hero_photo:"Hero photo",
+ about_title:"About page title",
+ about_who_text:"About text",
+ about_growth_text:"growth & learning text",
+ about_photo:"About photo",
+ about_skills:"skills list",
+ about_values:"core values",
+ linkedin:"LinkedIn profile",
+ whatsapp:"WhatsApp contact",
+ email:"contact email",
+ github:"GitHub profile",
+ twitter:"Twitter profile",
+ archive_status:"archive access mode",
+ retention_daily_days:"backup retention period"
 };
 
-function formatObjText(obj){
- if(!obj)return "";
- return OBJ_MAP[obj]||obj;
+function humanizeFieldName(k){
+ const clean=(k||"").trim().toLowerCase();
+ if(FIELD_LABELS[clean])return FIELD_LABELS[clean];
+ const words=clean.replace(/_/g," ").replace(/\s+/g," ").trim();
+ return words?words.charAt(0).toUpperCase()+words.slice(1):"";
 }
 
-function groupActivities(list){
+function formatReadableList(arr){
+ if(!arr||!arr.length)return "";
+ if(arr.length===1)return arr[0];
+ if(arr.length===2)return `${arr[0]} and ${arr[1]}`;
+ return `${arr.slice(0,-1).join(", ")} and ${arr[arr.length-1]}`;
+}
+
+function formatActivityEntry(action,obj,area){
+ let act=(action||"").trim();
+ let details=(obj||"").trim();
+ let isSecurity=(area==="security"||/wrong|failed|blocked|revoked|password.*changed|reset/i.test(act)||/revoked/i.test(details));
+
+ if(/archive settings updated/i.test(act)||(act==="Archive settings updated")){
+  const combined=(act+" "+details).toLowerCase();
+  if(combined.includes("enabled")){
+   act="Private Archive turned on";
+   details="";
+  }else if(combined.includes("disabled")){
+   act="Private Archive turned off";
+   details="";
+  }else if(combined.includes("maintenance")){
+   act="Private Archive set to maintenance";
+   details="";
+  }
+ }else if(/archive password changed/i.test(act)){
+  act="Archive password changed";
+  details="All existing archive sessions revoked";
+  isSecurity=true;
+ }else if(/wrong archive password attempt/i.test(act)){
+  act="Wrong password attempt";
+  details="Unauthorized archive access attempt";
+  isSecurity=true;
+ }else if(/sign-in blocked/i.test(act)){
+  act="Sign-in locked out";
+  details=details?`Rate limit triggered for ${details}`:"Consecutive failed sign-in attempts";
+  isSecurity=true;
+ }else if(/failed sign-in/i.test(act)){
+  act="Failed sign-in attempt";
+  details=details?`Attempted account: ${details}`:"";
+  isSecurity=true;
+ }else if(/owner password changed/i.test(act)){
+  act="Admin password changed";
+  details="Owner credentials updated";
+  isSecurity=true;
+ }else if(/access password changed/i.test(act)){
+  act="Guest passcode changed";
+  details="Active viewer sessions revoked";
+  isSecurity=true;
+ }else if(/viewer password reset/i.test(act)){
+  act="Viewer password reset";
+  isSecurity=true;
+ }
+
+ if(act==="Settings changed"||area==="settings"){
+  if(details&&(details.includes("_")||details.includes(","))){
+   const parts=details.split(",").map(p=>p.trim()).filter(Boolean);
+   if(parts.length>0){
+    const humanParts=parts.map(humanizeFieldName);
+    details=formatReadableList(humanParts);
+   }
+  }
+ }
+
+ return {action:act,obj:details,isSecurity};
+}
+
+function groupActivities(rawList,feedType){
+ const filtered=(rawList||[]).filter(item=>{
+  const isArchSec=(item.area==="archive"||item.area==="security"||item.area==="viewers");
+  if(feedType==="content")return !isArchSec;
+  if(feedType==="archive")return isArchSec;
+  return true;
+ });
+
  const out=[];
- for(const item of(list||[])){
-  const isSecurity=(item.area==="security"||/wrong|failed|blocked/i.test(item.action));
+ for(const raw of filtered){
+  const fmt=formatActivityEntry(raw.action,raw.obj,raw.area);
+  const item={...raw,action:fmt.action,obj:fmt.obj,isSecurity:fmt.isSecurity};
+  
   const last=out[out.length-1];
-  if(last&&last.action===item.action&&last.obj===item.obj&&last.actor===item.actor){
+  const canGroup=last&&(last.action===item.action)&&(last.actor===item.actor||item.area==="settings"||item.area==="content");
+  
+  if(canGroup){
    last.count=(last.count||1)+1;
-   last.ts=item.ts;
+   if(item.obj&&last.obj&&item.obj!==last.obj){
+    const s=new Set([...last.obj.split(/,\s*|\s+and\s+/),...item.obj.split(/,\s*|\s+and\s+/)].map(x=>x.trim()).filter(Boolean));
+    last.obj=formatReadableList(Array.from(s).slice(0,5));
+   }else if(item.obj&&!last.obj){
+    last.obj=item.obj;
+   }
   }else{
-   out.push({...item,count:1,isSecurity});
+   out.push({...item,count:1});
   }
  }
  return out;
 }
 
-function renderActivityFeed(rawList){
- if(!rawList||!rawList.length)return `<p style="color:var(--muted);padding:1.4rem 0;text-align:center;font-size:13px">No recent events recorded.</p>`;
- const grouped=groupActivities(rawList);
+function renderActivityFeed(rawList,feedType){
+ const grouped=groupActivities(rawList,feedType);
+ if(!grouped.length)return `<p style="color:var(--muted);padding:1.4rem 0;text-align:center;font-size:13px">No recent events recorded.</p>`;
+ 
  return `<div class="scroll">
   <table class="act-table">
+   <thead>
+    <tr>
+     <th style="width:110px">Time (IST)</th>
+     <th>Event Details</th>
+     <th style="text-align:right;width:110px">Actor</th>
+    </tr>
+   </thead>
    <tbody>
     ${grouped.map(a=>{
      const isWarn=a.isSecurity;
-     const countBadge=a.count>1?`<span class="pill sm count-pill">×${a.count}</span>`:"";
-     const humanObj=formatObjText(a.obj);
+     const countLabel=a.count>1?`<span class="pill sm count-pill">×${a.count}</span>`:"";
+     const warnBadge=isWarn?`<span class="sec-badge">⚠️ Security</span>`:"";
+     const warnIcon=isWarn?`<span style="color:var(--bad);font-size:13px" title="Security Alert">⚠️</span> `:"";
+     
      return `<tr class="${isWarn?'act-warn-row':''}">
       <td class="act-time">${timeSpan(a.ts)}</td>
       <td style="font-size:13px">
-       <div class="row" style="gap:.45rem">
-        <strong>${esc(a.action)}</strong>
-        ${countBadge}
-        ${isWarn?'<span class="pill sm bad">Alert</span>':''}
+       <div class="row" style="gap:.45rem;align-items:center">
+        <strong>${warnIcon}${esc(a.action)}</strong>
+        ${countLabel}
+        ${warnBadge}
        </div>
-       ${humanObj?`<div style="font-size:12px;color:var(--muted);margin-top:2px">${esc(humanObj)}</div>`:''}
+       ${a.obj?`<div style="font-size:12.5px;color:var(--muted);margin-top:2px;line-height:1.35">${esc(a.obj)}</div>`:''}
       </td>
       <td style="text-align:right;font-size:12px;white-space:nowrap">
-       <span class="pill sm ${isWarn?'warn':''}">${esc(a.actor||'system')}</span>
+       <span class="pill sm ${isWarn?'bad':''}">${esc(a.actor||'system')}</span>
       </td>
      </tr>`;
     }).join("")}
@@ -903,13 +1003,13 @@ VIEWS.overview=async()=>{
   <a href="#/list/project" class="stat-card" title="Manage Projects">
    <div class="num"><span>${o.projects}</span> <span style="font-size:1.3rem">📁</span></div>
    <div class="label">Projects</div>
-   <div class="sub">${o.projects?(o.projects+' published case '+((o.projects===1)?'study':'studies')):'0 published · Add first'}</div>
+   <div class="sub">${o.projects > 0 ? (o.projects + ' published case ' + ((o.projects === 1) ? 'study' : 'studies')) : 'No projects yet. Add your first.'}</div>
   </a>
 
   <a href="#/list/gallery" class="stat-card" title="Manage Visual Gallery">
    <div class="num"><span>${o.artworks}</span> <span style="font-size:1.3rem">🎨</span></div>
    <div class="label">Visual Gallery</div>
-   <div class="sub">${o.artworks?(o.artworks+' showcase artworks'):'No artworks yet · Upload'}</div>
+   <div class="sub">${o.artworks > 0 ? (o.artworks + ' showcase artworks') : 'No artworks yet. Add your first.'}</div>
   </a>
 
   <a href="#/list/post" class="stat-card" title="Manage Blog Articles">
@@ -921,31 +1021,31 @@ VIEWS.overview=async()=>{
   <a href="#/list/journey" class="stat-card" title="Manage Journey Milestones">
    <div class="num"><span>${o.milestones||0}</span> <span style="font-size:1.3rem">🧭</span></div>
    <div class="label">Journey Timeline</div>
-   <div class="sub">${o.milestones?(o.milestones+' milestones'):'0 milestones · Document path'}</div>
+   <div class="sub">${(o.milestones||0) > 0 ? (o.milestones + ' milestones documented') : 'No milestones yet. Document your path.'}</div>
   </a>
 
   <a href="#/list/achievement" class="stat-card" title="Manage Achievements">
    <div class="num"><span>${o.achievements}</span> <span style="font-size:1.3rem">🏆</span></div>
    <div class="label">Achievements</div>
-   <div class="sub">${o.achievements?(o.achievements+' honors &amp; awards'):'No achievements listed'}</div>
+   <div class="sub">${o.achievements > 0 ? (o.achievements + ' honors &amp; awards') : 'No achievements yet. Record your honors.'}</div>
   </a>
 
-  <a href="#/media" class="stat-card" title="Manage Media Library">
+  <a href="#/media" class="stat-card" title="Manage Media Assets">
    <div class="num"><span>${o.media||0}</span> <span style="font-size:1.3rem">🖼️</span></div>
    <div class="label">Media Assets</div>
-   <div class="sub">${o.media?(o.media+' files stored'):'Empty library · Upload'}</div>
+   <div class="sub">${(o.media||0) > 0 ? (o.media + ' media files stored') : 'No media yet. Upload your assets.'}</div>
   </a>
 
-  <a href="#/messages" class="stat-card" title="View Messages">
+  <a href="#/messages" class="stat-card" title="View Inquiries &amp; Messages">
    <div class="num"><span>${o.unread}</span> <span style="font-size:1.3rem">✉️</span></div>
    <div class="label">Contact Inquiries</div>
-   <div class="sub">${o.unread?(o.unread+' new unread'):'All caught up · Zero unread'}</div>
+   <div class="sub">${o.unread > 0 ? (o.unread + ' new unread ' + ((o.unread === 1) ? 'message' : 'messages')) : 'All caught up. Zero unread messages.'}</div>
   </a>
 
   <a href="#/viewers" class="stat-card" title="Manage Authorized Archive Viewers">
    <div class="num"><span>${o.viewers}</span> <span style="font-size:1.3rem">👥</span></div>
    <div class="label">Private Archive Viewers</div>
-   <div class="sub">${o.viewers?(o.viewers+' authorized accounts'):'0 accounts · Invite guests'}</div>
+   <div class="sub">${o.viewers > 0 ? (o.viewers + ' authorized accounts') : 'No viewers yet. Invite guests.'}</div>
   </a>
  </div>
 
@@ -1005,17 +1105,23 @@ VIEWS.overview=async()=>{
  <div class="two">
   <div class="card">
    <div class="row" style="justify-content:space-between;align-items:center;margin-bottom:.8rem">
-    <h3 style="margin:0">Recent Content Updates</h3>
+    <div>
+     <h3 style="margin:0">Recent Updates &amp; Activity</h3>
+     <span style="font-size:12px;color:var(--muted)">Content, projects, posts, media &amp; settings</span>
+    </div>
     <a class="btn sm" href="#/activity">View All</a>
    </div>
-   ${renderActivityFeed(o.recent)}
+   ${renderActivityFeed(o.recent, 'content')}
   </div>
   <div class="card">
    <div class="row" style="justify-content:space-between;align-items:center;margin-bottom:.8rem">
-    <h3 style="margin:0">Private Archive &amp; Security Events</h3>
+    <div>
+     <h3 style="margin:0">Private Archive Activity</h3>
+     <span style="font-size:12px;color:var(--muted)">Archive access, unlockings &amp; security events</span>
+    </div>
     <a class="btn sm" href="#/activity">View All</a>
    </div>
-   ${renderActivityFeed(o.archive)}
+   ${renderActivityFeed(o.archive, 'archive')}
   </div>
  </div>
  `;
@@ -2053,7 +2159,7 @@ VIEWS.activity=async()=>{
  </div>
  <div class="card scroll" style="padding:.4rem">
   <table>
-   <thead><tr><th>Timestamp (UTC)</th><th>Actor</th><th>Action</th><th>Target / Details</th></tr></thead>
+   <thead><tr><th>Time (IST)</th><th>Actor</th><th>Action</th><th>Target / Details</th></tr></thead>
    <tbody>
     ${r.items.map(a=>`
      <tr>

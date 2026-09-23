@@ -1290,8 +1290,8 @@ def overview():
         drafts=n("SELECT COUNT(*) FROM items WHERE kind='post' AND status!='published'"),
         unread=n("SELECT COUNT(*) FROM contacts WHERE read=0"),
         viewers=n("SELECT COUNT(*) FROM users WHERE role!='owner'"),
-        recent=qa("SELECT * FROM activity WHERE area IN ('portfolio','blog','content','items','') ORDER BY id DESC LIMIT 20"),
-        archive=qa("SELECT * FROM activity WHERE area IN ('archive','security','viewers') ORDER BY id DESC LIMIT 20"),
+        recent=qa("SELECT * FROM activity WHERE area IN ('portfolio','blog','content','items','settings','backup') ORDER BY id DESC LIMIT 40"),
+        archive=qa("SELECT * FROM activity WHERE area IN ('archive','security','viewers') ORDER BY id DESC LIMIT 40"),
         access=qa("SELECT * FROM activity WHERE area IN ('viewers','settings') ORDER BY id DESC LIMIT 10"),
         archive_status=setting("archive_status", "enabled"),
         last_backup=q1("SELECT ts, name FROM backups ORDER BY id DESC LIMIT 1"))
