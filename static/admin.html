@@ -7,7 +7,11 @@
 <title>Admin Portal | Burhanuddin Malik</title>
 <link href="https://fonts.googleapis.com/css2?family=Hanken+Grotesk:wght@400;500;600;700&family=Instrument+Serif:ital@0;1&display=swap" rel="stylesheet">
 <style>
-:root{--bg:#0e1731;--bg2:#16224a;--bg3:#1c2b5c;--ink:#f4eedd;--muted:#a9b2cc;--gold:#d0a84f;--gold2:#e5be65;--on:#0e1731;--line:rgba(244,238,221,.15);--line2:rgba(244,238,221,.25);--bad:#ff7b7b;--ok:#8fd19e}
+:root{
+  --bg:#0e1731;--bg2:#16224a;--bg3:#1c2b5c;--ink:#f4eedd;
+  --muted:#c4cde5;--muted2:#939ec0;--gold:#d0a84f;--gold2:#e5be65;--on:#0e1731;
+  --line:rgba(244,238,221,.15);--line2:rgba(244,238,221,.25);--bad:#ff7b7b;--ok:#8fd19e
+}
 *{box-sizing:border-box;margin:0}
 body{background:var(--bg);color:var(--ink);font:400 15px/1.55 'Hanken Grotesk',system-ui,sans-serif;-webkit-font-smoothing:antialiased}
 h1,h2,h3{font-family:'Instrument Serif',Georgia,serif;font-weight:400;line-height:1.15}
@@ -23,25 +27,31 @@ button:hover,.btn:hover{border-color:var(--gold);text-decoration:none}
 input,select,textarea{font:inherit;background:var(--bg);color:var(--ink);border:1px solid var(--line);border-radius:8px;padding:.55rem .75rem;width:100%;transition:border-color .2s}
 input:focus,select:focus,textarea:focus{outline:none;border-color:var(--gold);box-shadow:0 0 0 2px rgba(208,168,79,.2)}
 textarea{min-height:100px;resize:vertical}
-label{display:block;font-size:.88rem;color:var(--muted);margin-bottom:.9rem}
-label>input,label>select,label>textarea{margin-top:.3rem;color:var(--ink)}
-label.chk{display:flex;gap:.6rem;align-items:center;color:var(--ink);cursor:pointer}label.chk input{width:auto;margin:0}
-.help{font-size:.8rem;color:var(--muted);margin-top:.25rem;display:block}
+label{display:block;font-size:13px;font-weight:500;color:var(--muted);margin-bottom:.9rem}
+label>input,label>select,label>textarea{margin-top:.35rem;color:var(--ink)}
+label.chk{display:flex;gap:.6rem;align-items:center;color:var(--ink);cursor:pointer;font-size:13.5px}label.chk input{width:auto;margin:0}
+.help{font-size:12.5px;color:var(--muted);margin-top:.3rem;display:block;line-height:1.4}
 :focus-visible{outline:2px solid var(--gold);outline-offset:2px}
+button:focus-visible,.btn:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-visible{outline:2px solid var(--gold);outline-offset:2px}
+#side a:focus-visible{outline:2px solid var(--gold);outline-offset:-2px}
 #login{min-height:100vh;display:grid;place-items:center;padding:1.5rem}
 #login form{background:var(--bg2);border:1px solid var(--line);border-radius:16px;padding:2.2rem;width:min(420px,100%);box-shadow:0 20px 50px rgba(0,0,0,.4)}
 #app{display:grid;grid-template-columns:260px 1fr;min-height:100vh}
-#side{background:var(--bg2);border-right:1px solid var(--line);padding:1.2rem 0;position:sticky;top:0;height:100vh;overflow-y:auto;display:flex;flex-direction:column}
+#side{background:var(--bg2);border-right:1px solid var(--line);padding:1.2rem 0;position:sticky;top:0;height:100vh;overflow-y:auto;display:flex;flex-direction:column;scrollbar-width:thin;scrollbar-color:rgba(208,168,79,.3) transparent}
+#side::-webkit-scrollbar{width:4px}
+#side::-webkit-scrollbar-thumb{background:rgba(208,168,79,.3);border-radius:4px}
+#side::-webkit-scrollbar-thumb:hover{background:var(--gold)}
 #side .brand-box{padding:0 1.2rem 1rem;border-bottom:1px solid var(--line);display:flex;flex-direction:column;gap:.2rem}
-#side .brand{font-family:'Instrument Serif',serif;font-size:1.5rem;color:var(--ink);text-decoration:none}
-#side .badge{font-size:.72rem;text-transform:uppercase;letter-spacing:.08em;color:var(--gold);font-weight:600}
+#side .brand{font-family:'Instrument Serif',serif;font-size:1.55rem;color:var(--ink);text-decoration:none;letter-spacing:.01em}
+#side .badge{font-size:11px;text-transform:uppercase;letter-spacing:.09em;color:var(--gold);font-weight:600}
 #side nav{flex:1;padding:.5rem 0}
-#side small{display:block;padding:.8rem 1.2rem .3rem;color:var(--muted);font-size:.72rem;letter-spacing:.08em;text-transform:uppercase;font-weight:600}
-#side a{display:flex;align-items:center;justify-content:space-between;padding:.42rem 1.2rem;color:var(--ink);text-decoration:none;border-left:3px solid transparent;font-size:.92rem}
-#side a:hover{background:var(--bg3);color:#fff}
-#side a.on{border-color:var(--gold);background:var(--bg3);color:var(--gold);font-weight:600}
-#side a.sub{padding-left:2.1rem;font-size:.88rem;color:var(--muted)}
-#side a.sub:hover{color:var(--ink)}#side a.sub.on{color:var(--gold)}
+#side small{display:block;padding:.85rem 1.2rem .35rem;color:var(--gold);font-size:11px;letter-spacing:.09em;text-transform:uppercase;font-weight:700}
+#side a{display:flex;align-items:center;gap:.65rem;padding:.48rem 1.2rem;color:var(--ink);text-decoration:none;border-left:3px solid transparent;font-size:14px;font-weight:500;transition:all .15s ease}
+#side a:hover{background:var(--bg3);color:#fff;border-left-color:rgba(208,168,79,.4)}
+#side a.on{border-left-color:var(--gold);background:linear-gradient(90deg,rgba(208,168,79,.18) 0%,rgba(208,168,79,.03) 100%);color:var(--gold);font-weight:600}
+#side a .nav-ic{font-size:1.05rem;width:20px;text-align:center;flex-shrink:0;display:inline-grid;place-items:center}
+#side a.sub{padding-left:2.2rem;font-size:13.5px;color:var(--muted)}
+#side a.sub:hover{color:var(--ink)}#side a.sub.on{color:var(--gold);font-weight:600}
 #side .foot{padding:1rem 1.2rem;border-top:1px solid var(--line);display:flex;flex-direction:column;gap:.4rem}
 #main-wrap{display:flex;flex-direction:column;min-width:0}
 #topbar{background:var(--bg2);border-bottom:1px solid var(--line);padding:.75rem 1.5rem;display:flex;align-items:center;justify-content:space-between;gap:1rem;position:sticky;top:0;z-index:20}
@@ -49,20 +59,52 @@ label.chk{display:flex;gap:.6rem;align-items:center;color:var(--ink);cursor:poin
 .search-box input{padding-left:2.2rem;border-radius:999px;font-size:.88rem;height:36px}
 .search-box svg{position:absolute;left:.8rem;top:50%;transform:translateY(-50%);width:14px;height:14px;color:var(--muted);pointer-events:none}
 .top-actions{display:flex;align-items:center;gap:.6rem}
-#view{padding:2rem clamp(1rem,3vw,2.8rem);max-width:1160px;width:100%;margin:0 auto}
+#view{padding:2rem clamp(1.2rem,2.8vw,3rem);max-width:1360px;width:100%;margin:0}
 #mbar{display:none}
+#side-backdrop{display:none;position:fixed;inset:0;background:rgba(3,8,24,.75);backdrop-filter:blur(3px);z-index:38}
+#side-backdrop.open{display:block}
 @media(max-width:880px){
  #app{grid-template-columns:1fr}
- #side{position:fixed;left:-280px;width:270px;z-index:40;transition:left .25s ease}
+ #side{position:fixed;left:-290px;width:280px;z-index:40;transition:left .25s cubic-bezier(.4,0,.2,1);box-shadow:0 0 40px rgba(0,0,0,.6)}
  #side.open{left:0}
  #topbar{display:none}
  #mbar{display:flex;justify-content:space-between;align-items:center;padding:.75rem 1rem;background:var(--bg2);border-bottom:1px solid var(--line);position:sticky;top:0;z-index:30}
 }
-.tiles{display:grid;grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:.9rem;margin:1.2rem 0}
-.tile{background:var(--bg2);border:1px solid var(--line);border-radius:12px;padding:1.1rem;transition:border-color .2s}
-.tile:hover{border-color:var(--line2)}
-.tile b{display:block;font-family:'Instrument Serif',serif;font-size:2.2rem;font-weight:400;line-height:1.05;color:var(--gold)}
-.tile span{color:var(--muted);font-size:.82rem}
+/* Stat Cards 4x2 Grid */
+.stat-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:1rem;margin:1.2rem 0 1.5rem}
+@media(max-width:1120px){.stat-grid{grid-template-columns:repeat(2,1fr)}}
+@media(max-width:560px){.stat-grid{grid-template-columns:1fr}}
+.stat-card{background:var(--bg2);border:1px solid var(--line);border-radius:12px;padding:1.1rem 1.2rem;text-decoration:none;display:flex;flex-direction:column;gap:.35rem;transition:border-color .2s,transform .2s,box-shadow .2s;color:inherit;cursor:pointer}
+.stat-card:hover{border-color:var(--gold);transform:translateY(-2px);box-shadow:0 8px 24px rgba(0,0,0,.35);text-decoration:none}
+.stat-card .num{font-family:'Instrument Serif',Georgia,serif;font-size:2.35rem;font-weight:400;line-height:1.05;color:var(--gold);display:flex;align-items:baseline;justify-content:space-between}
+.stat-card .label{font-size:13.5px;font-weight:600;color:var(--ink)}
+.stat-card .sub{font-size:12px;color:var(--muted)}
+
+/* Status Chips & Checklist */
+.status-chips{display:flex;flex-wrap:wrap;gap:.6rem;align-items:center;margin-bottom:1.2rem}
+.chip{display:inline-flex;align-items:center;gap:.45rem;padding:.35rem .75rem;border-radius:999px;font-size:12.5px;font-weight:500;border:1px solid var(--line);background:var(--bg2);color:var(--ink);text-decoration:none;transition:border-color .2s}
+.chip:hover{border-color:var(--gold);text-decoration:none}
+.chip.ok{border-color:rgba(143,209,158,.3);background:rgba(143,209,158,.08);color:var(--ok)}
+.chip.warn{border-color:rgba(208,168,79,.3);background:rgba(208,168,79,.08);color:var(--gold)}
+.chip.bad{border-color:rgba(255,123,123,.3);background:rgba(255,123,123,.08);color:var(--bad)}
+
+.checklist-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:.8rem;margin-top:.8rem}
+.check-item{display:flex;align-items:flex-start;gap:.8rem;background:var(--bg);border:1px solid var(--line);border-radius:10px;padding:.8rem .9rem;text-decoration:none;color:inherit;transition:border-color .2s,background .2s}
+.check-item:hover{border-color:var(--gold);background:rgba(208,168,79,.03);text-decoration:none}
+.check-icon{width:22px;height:22px;border-radius:50%;display:grid;place-items:center;font-size:11px;font-weight:700;flex-shrink:0;margin-top:2px}
+.check-icon.done{background:rgba(143,209,158,.2);color:var(--ok);border:1px solid rgba(143,209,158,.4)}
+.check-icon.todo{background:rgba(208,168,79,.15);color:var(--gold);border:1px solid rgba(208,168,79,.3)}
+.check-text b{display:block;font-size:13.5px;color:var(--ink);margin-bottom:2px}
+.check-text span{font-size:12px;color:var(--muted)}
+
+/* Activity Feed Refinements */
+.act-table{width:100%;border-collapse:collapse}
+.act-table tr{border-bottom:1px solid var(--line);transition:background .15s}
+.act-table td{padding:.65rem .75rem;vertical-align:middle}
+.act-table tr:hover td{background:rgba(255,255,255,.025)}
+.act-warn-row{background:rgba(255,123,123,.07)!important;border-left:3px solid var(--bad)}
+.count-pill{background:rgba(208,168,79,.2);color:var(--gold);border:1px solid rgba(208,168,79,.35);font-weight:700;padding:1px 6px;border-radius:999px;font-size:11px}
+.act-time{white-space:nowrap;font-size:13px;color:var(--muted);width:95px}
 .row{display:flex;flex-wrap:wrap;gap:.6rem;align-items:center}
 table{width:100%;border-collapse:collapse;font-size:.92rem}
 th,td{text-align:left;padding:.6rem .75rem;border-bottom:1px solid var(--line);vertical-align:middle}
@@ -129,6 +171,7 @@ dialog::backdrop{background:rgba(3,8,24,.75);backdrop-filter:blur(3px)}
  </div>
 </div>
 
+<div id="side-backdrop"></div>
 <div id="app" hidden>
  <aside id="side">
   <div class="brand-box">
@@ -150,8 +193,8 @@ dialog::backdrop{background:rgba(3,8,24,.75);backdrop-filter:blur(3px)}
    <div class="top-actions">
     <div style="position:relative">
      <button class="btn sm" id="prevmenu-btn">👁️ Preview ▾</button>
-     <div id="prevmenu" style="display:none;position:absolute;right:0;top:38px;background:var(--bg2);border:1px solid var(--line);border-radius:10px;padding:.4rem;min-width:180px;box-shadow:0 12px 30px rgba(0,0,0,.5);z-index:90">
-      <div style="font-size:.7rem;text-transform:uppercase;color:var(--muted);padding:.2rem .6rem;letter-spacing:.05em">Public Website</div>
+     <div id="prevmenu" style="display:none;position:absolute;right:0;top:38px;background:var(--bg2);border:1px solid var(--line);border-radius:10px;padding:.4rem;min-width:185px;box-shadow:0 12px 30px rgba(0,0,0,.5);z-index:90">
+      <div style="font-size:11px;text-transform:uppercase;color:var(--gold);padding:.25rem .6rem;letter-spacing:.08em;font-weight:700">Public Website</div>
       <a class="btn sm" style="width:100%;border:0;justify-content:flex-start" href="/?preview=1" target="_blank">Home Page</a>
       <a class="btn sm" style="width:100%;border:0;justify-content:flex-start" href="/about?preview=1" target="_blank">About Page</a>
       <a class="btn sm" style="width:100%;border:0;justify-content:flex-start" href="/work?preview=1" target="_blank">Work / Projects</a>
@@ -160,15 +203,30 @@ dialog::backdrop{background:rgba(3,8,24,.75);backdrop-filter:blur(3px)}
       <a class="btn sm" style="width:100%;border:0;justify-content:flex-start" href="/blog?preview=1" target="_blank">Blog Articles</a>
       <a class="btn sm" style="width:100%;border:0;justify-content:flex-start" href="/contact?preview=1" target="_blank">Contact Page</a>
       <div style="border-top:1px solid var(--line);margin:.4rem 0"></div>
-      <div style="font-size:.7rem;text-transform:uppercase;color:var(--muted);padding:.2rem .6rem;letter-spacing:.05em">Private Archive</div>
+      <div style="font-size:11px;text-transform:uppercase;color:var(--gold);padding:.25rem .6rem;letter-spacing:.08em;font-weight:700">Private Archive</div>
       <a class="btn sm" style="width:100%;border:0;justify-content:flex-start" href="/archive" target="_blank">Archive (Owner)</a>
       <a class="btn sm" style="width:100%;border:0;justify-content:flex-start" href="/archive?as_level=A" target="_blank">Archive (Level A)</a>
       <a class="btn sm" style="width:100%;border:0;justify-content:flex-start" href="/archive?as_level=B" target="_blank">Archive (Level B)</a>
       <a class="btn sm" style="width:100%;border:0;justify-content:flex-start" href="/archive?as_level=C" target="_blank">Archive (Level C)</a>
      </div>
     </div>
-    <a class="btn pri sm" href="#/edit/project/new">+ Project</a>
-    <a class="btn sm" href="#/media">+ Upload</a>
+    <div style="position:relative">
+     <button class="btn pri sm" id="newmenu-btn">+ New ▾</button>
+     <div id="newmenu" style="display:none;position:absolute;right:0;top:38px;background:var(--bg2);border:1px solid var(--line);border-radius:10px;padding:.4rem;min-width:200px;box-shadow:0 12px 30px rgba(0,0,0,.5);z-index:90">
+      <div style="font-size:11px;text-transform:uppercase;color:var(--gold);padding:.25rem .6rem;letter-spacing:.08em;font-weight:700">Website Content</div>
+      <a class="btn sm" style="width:100%;border:0;justify-content:flex-start" href="#/edit/project/new">📁 New Project</a>
+      <a class="btn sm" style="width:100%;border:0;justify-content:flex-start" href="#/edit/gallery/new">🎨 New Artwork</a>
+      <a class="btn sm" style="width:100%;border:0;justify-content:flex-start" href="#/edit/post/new">📝 New Blog Article</a>
+      <a class="btn sm" style="width:100%;border:0;justify-content:flex-start" href="#/edit/journey/new">🧭 New Milestone</a>
+      <a class="btn sm" style="width:100%;border:0;justify-content:flex-start" href="#/edit/achievement/new">🏆 New Achievement</a>
+      <div style="border-top:1px solid var(--line);margin:.4rem 0"></div>
+      <div style="font-size:11px;text-transform:uppercase;color:var(--gold);padding:.25rem .6rem;letter-spacing:.08em;font-weight:700">Assets & Archive</div>
+      <a class="btn sm" style="width:100%;border:0;justify-content:flex-start" href="#/media">🖼️ Upload Media</a>
+      <a class="btn sm" style="width:100%;border:0;justify-content:flex-start" href="#/edit/detail/new">📋 New Archive Detail</a>
+      <a class="btn sm" style="width:100%;border:0;justify-content:flex-start" href="#/edit/journal/new">📓 New Journal Entry</a>
+      <a class="btn sm" style="width:100%;border:0;justify-content:flex-start" href="#/edit/file/new">📄 New Document</a>
+     </div>
+    </div>
    </div>
   </header>
   <main id="view" tabindex="-1"></main>
@@ -196,7 +254,106 @@ async function api(path,method="GET",body){
 }
 function toast(m,err){const d=document.createElement("div");d.className="toast"+(err?" err":"");d.textContent=m;document.body.append(d);setTimeout(()=>d.remove(),3200)}
 const guard=fn=>async(...a)=>{try{return await fn(...a)}catch(e){toast(e.message,true)}};
-const fdate=s=>s?String(s).replace("T"," ").replace("Z","").slice(0,16):"";
+function timeAgo(dateInput){
+ if(!dateInput)return "";
+ const d=new Date(typeof dateInput==="string"&&!dateInput.endsWith("Z")&&!dateInput.includes("+")?dateInput+"Z":dateInput);
+ if(isNaN(d.getTime()))return String(dateInput);
+ const diffSec=Math.floor((Date.now()-d.getTime())/1000);
+ if(diffSec<45)return "just now";
+ const diffMin=Math.floor(diffSec/60);
+ if(diffMin<60)return diffMin+"m ago";
+ const diffHr=Math.floor(diffMin/60);
+ if(diffHr<24)return diffHr+"h ago";
+ const diffDays=Math.floor(diffHr/24);
+ if(diffDays<7)return diffDays+(diffDays===1?"d ago":"d ago");
+ return d.toLocaleDateString("en-IN",{timeZone:"Asia/Kolkata",day:"numeric",month:"short"});
+}
+
+function fullIST(dateInput){
+ if(!dateInput)return "";
+ const d=new Date(typeof dateInput==="string"&&!dateInput.endsWith("Z")&&!dateInput.includes("+")?dateInput+"Z":dateInput);
+ if(isNaN(d.getTime()))return String(dateInput);
+ return d.toLocaleString("en-IN",{
+  timeZone:"Asia/Kolkata",
+  year:"numeric",
+  month:"short",
+  day:"numeric",
+  hour:"numeric",
+  minute:"2-digit",
+  hour12:true
+ })+" IST";
+}
+
+function timeSpan(dateInput){
+ if(!dateInput)return "";
+ return `<time datetime="${esc(dateInput)}" title="${esc(fullIST(dateInput))}" style="cursor:help">${esc(timeAgo(dateInput))}</time>`;
+}
+
+const fdate=s=>timeSpan(s);
+
+const OBJ_MAP={
+ home_name:"Home: Display Name",
+ home_tagline:"Home: Tagline",
+ home_intro:"Home: Introduction",
+ about_title:"About: Page Title",
+ about_who_text:"About: Who I Am",
+ about_growth_text:"About: Growth & Learning",
+ hero_photo:"Hero Profile Photo",
+ about_photo:"About Profile Photo",
+ linkedin:"LinkedIn Profile",
+ whatsapp:"WhatsApp Contact",
+ email:"Contact Email"
+};
+
+function formatObjText(obj){
+ if(!obj)return "";
+ return OBJ_MAP[obj]||obj;
+}
+
+function groupActivities(list){
+ const out=[];
+ for(const item of(list||[])){
+  const isSecurity=(item.area==="security"||/wrong|failed|blocked/i.test(item.action));
+  const last=out[out.length-1];
+  if(last&&last.action===item.action&&last.obj===item.obj&&last.actor===item.actor){
+   last.count=(last.count||1)+1;
+   last.ts=item.ts;
+  }else{
+   out.push({...item,count:1,isSecurity});
+  }
+ }
+ return out;
+}
+
+function renderActivityFeed(rawList){
+ if(!rawList||!rawList.length)return `<p style="color:var(--muted);padding:1.4rem 0;text-align:center;font-size:13px">No recent events recorded.</p>`;
+ const grouped=groupActivities(rawList);
+ return `<div class="scroll">
+  <table class="act-table">
+   <tbody>
+    ${grouped.map(a=>{
+     const isWarn=a.isSecurity;
+     const countBadge=a.count>1?`<span class="pill sm count-pill">×${a.count}</span>`:"";
+     const humanObj=formatObjText(a.obj);
+     return `<tr class="${isWarn?'act-warn-row':''}">
+      <td class="act-time">${timeSpan(a.ts)}</td>
+      <td style="font-size:13px">
+       <div class="row" style="gap:.45rem">
+        <strong>${esc(a.action)}</strong>
+        ${countBadge}
+        ${isWarn?'<span class="pill sm bad">Alert</span>':''}
+       </div>
+       ${humanObj?`<div style="font-size:12px;color:var(--muted);margin-top:2px">${esc(humanObj)}</div>`:''}
+      </td>
+      <td style="text-align:right;font-size:12px;white-space:nowrap">
+       <span class="pill sm ${isWarn?'warn':''}">${esc(a.actor||'system')}</span>
+      </td>
+     </tr>`;
+    }).join("")}
+   </tbody>
+  </table>
+ </div>`;
+}
 const fsize=b=>b>1e6?(b/1e6).toFixed(1)+" MB":Math.max(1,Math.round(b/1e3))+" KB";
 const secs=s=>s==null?"—":s<60?Math.round(s)+"s":Math.floor(s/60)+"m "+Math.round(s%60)+"s";
 const num=n=>n==null?"—":(Math.round(n*10)/10).toString();
@@ -501,47 +658,75 @@ async function renderMediaDialog(priv=0,multi=false,q="",filter="images"){
 
 /* ---------- navigation structure ---------- */
 const NAVS=[
- ["Overview","overview"],
+ ["Dashboard","overview","📊"],
  ["Website Content"],
- ["Home Page","home"],
- ["About Page","about"],
- ["Projects","list/project","sub"],
- ["Visual Gallery","list/gallery","sub"],
- ["Journey","list/journey","sub"],
- ["Achievements","list/achievement","sub"],
- ["Blog Articles","list/post","sub"],
- ["Contact & Socials","contact"],
+ ["Home Page","home","🏠"],
+ ["About Page","about","👤"],
+ ["Projects","list/project","📁"],
+ ["Visual Gallery","list/gallery","🎨"],
+ ["Journey Timeline","list/journey","🧭"],
+ ["Achievements","list/achievement","🏆"],
+ ["Blog Articles","list/post","📝"],
+ ["Contact & Socials","contact","💬"],
  ["Assets & Themes"],
- ["Media Library","media"],
- ["Theme Settings","themes"],
+ ["Media Library","media","🖼️"],
+ ["Theme Settings","themes","✨"],
  ["Private Archive"],
- ["Archive Overview & Settings","archive"],
- ["Full Details","list/detail","sub"],
- ["Journal","list/journal","sub"],
- ["Private Artwork","list/artwork","sub"],
- ["Appreciation","list/appreciation","sub"],
- ["Reflections","list/reflection","sub"],
- ["Special Achievements","list/special","sub"],
- ["Files","list/file","sub"],
+ ["Archive Overview & Settings","archive","🔒"],
+ ["Full Details","list/detail","sub","📋"],
+ ["Journal","list/journal","sub","📓"],
+ ["Private Artwork","list/artwork","sub","🖼️"],
+ ["Appreciation","list/appreciation","sub","⭐"],
+ ["Reflections","list/reflection","sub","💭"],
+ ["Special Achievements","list/special","sub","🎖️"],
+ ["Files & Docs","list/file","sub","📄"],
  ["Management"],
- ["Viewers & Permissions","viewers"],
- ["Activity Log","activity"],
- ["Analytics","analytics"],
- ["Feedback","feedback"],
- ["Messages","messages"],
- ["Backups","backups"],
- ["Account Settings","settings"]
+ ["Viewers & Permissions","viewers","👥"],
+ ["Activity Log","activity","📜"],
+ ["Analytics","analytics","📈"],
+ ["Feedback","feedback","⭐"],
+ ["Messages","messages","✉️"],
+ ["Backups","backups","💾"],
+ ["Account Settings","settings","⚙️"]
 ];
 
 function drawSide(){
- $("#sidenav").innerHTML=NAVS.map(n=>n[1]?`<a href="#/${n[1]}" class="${n[2]||""}" data-r="${n[1]}">${n[0]}</a>`:`<small>${n[0]}</small>`).join("");
+ $("#sidenav").innerHTML=NAVS.map(n=>{
+  if(!n[1])return `<small>${n[0]}</small>`;
+  const isSub=n[2]==="sub";
+  const icon=isSub?(n[3]||"•"):(n[2]||"");
+  return `<a href="#/${n[1]}" class="${isSub?'sub':''}" data-r="${n[1]}">
+   <span class="nav-ic">${icon}</span>
+   <span>${esc(n[0])}</span>
+  </a>`;
+ }).join("");
 }
-$("#mtoggle").onclick=()=>$("#side").classList.toggle("open");
-$("#prevmenu-btn").onclick=e=>{e.stopPropagation();$("#prevmenu").style.display=$("#prevmenu").style.display==="block"?"none":"block"};
+
+const toggleSide=open=>{
+ $("#side").classList.toggle("open",open);
+ $("#side-backdrop").classList.toggle("open",open);
+};
+
+$("#mtoggle").onclick=()=>toggleSide(!$("#side").classList.contains("open"));
+$("#side-backdrop").onclick=()=>toggleSide(false);
+
+$("#prevmenu-btn").onclick=e=>{
+ e.stopPropagation();
+ const nm=$("#newmenu");if(nm)nm.style.display="none";
+ $("#prevmenu").style.display=$("#prevmenu").style.display==="block"?"none":"block";
+};
+
 document.addEventListener("click",e=>{
- if(!e.target.closest("#prevmenu-btn")&&!e.target.closest("#prevmenu"))$("#prevmenu").style.display="none";
+ const pm=$("#prevmenu"),nm=$("#newmenu");
+ if(!e.target.closest("#prevmenu-btn")&&!e.target.closest("#prevmenu")&&pm)pm.style.display="none";
+ if(!e.target.closest("#newmenu-btn")&&!e.target.closest("#newmenu")&&nm)nm.style.display="none";
+ if(e.target.id==="newmenu-btn"){
+  e.stopPropagation();
+  if(pm)pm.style.display="none";
+  if(nm)nm.style.display=nm.style.display==="block"?"none":"block";
+ }
  if(e.target.id==="out"){e.preventDefault();api("/api/logout","POST").then(showLogin)}
- if(e.target.closest("#side a[data-r]"))$("#side").classList.remove("open");
+ if(e.target.closest("#side a[data-r]"))toggleSide(false);
 });
 
 /* ---------- global search input ---------- */
@@ -601,64 +786,155 @@ const VIEWS={};
 const ACT={};
 
 /* ---------- overview dashboard ---------- */
-const actList=l=>l.length?`<table><tbody>${l.map(a=>`<tr><td style="white-space:nowrap;color:var(--muted);font-size:.82rem">${fdate(a.ts)}</td><td><strong>${esc(a.action)}</strong>${a.obj?` <span style="color:var(--muted)">· ${esc(a.obj)}</span>`:""}</td></tr>`).join("")}</tbody></table>`:`<p style="color:var(--muted)">Nothing yet.</p>`;
-
 VIEWS.overview=async()=>{
  const o=await api("/api/admin/overview");
+
+ const archStatusMap={
+  enabled:{label:"Archive Enabled",cls:"ok",dot:"🟢"},
+  maintenance:{label:"Archive Maintenance",cls:"warn",dot:"🟡"},
+  disabled:{label:"Archive Disabled",cls:"bad",dot:"🔴"}
+ };
+ const archInfo=archStatusMap[o.archive_status]||archStatusMap.enabled;
+
  $("#view").innerHTML=`
- <div class="row" style="justify-content:space-between;margin-bottom:1rem">
+ <div class="row" style="justify-content:space-between;align-items:flex-start;margin-bottom:1.2rem">
   <div>
    <h1 style="margin:0">Dashboard</h1>
-   <p style="color:var(--muted);font-size:.9rem">Welcome back, Burhanuddin. Here is your website at a glance.</p>
-  </div>
-  <div class="row">
-   <a class="btn pri sm" href="#/edit/project/new">+ Add Project</a>
-   <a class="btn sm" href="#/edit/gallery/new">+ Add Artwork</a>
-   <a class="btn sm" href="#/edit/post/new">+ Add Post</a>
-   <a class="btn sm" href="#/edit/journey/new">+ Add Milestone</a>
+   <p style="color:var(--muted);font-size:14px;margin-top:.25rem">Welcome back, Burhanuddin. Live overview of your portfolio and private archive.</p>
   </div>
  </div>
 
- <div class="tiles">
-  <div class="tile"><b>${o.projects}</b><span>Projects</span></div>
-  <div class="tile"><b>${o.artworks}</b><span>Artworks</span></div>
-  <div class="tile"><b>${o.posts}</b><span>Posts (${o.drafts} drafts)</span></div>
-  <div class="tile"><b>${o.milestones||0}</b><span>Milestones</span></div>
-  <div class="tile"><b>${o.achievements}</b><span>Achievements</span></div>
-  <div class="tile"><b>${o.media||0}</b><span>Media Files</span></div>
-  <div class="tile"><b>${o.unread}</b><span>Unread Messages</span></div>
-  <div class="tile"><b>${o.viewers}</b><span>Active Viewers</span></div>
+ <!-- Status Chips -->
+ <div class="status-chips">
+  <a class="chip ok" href="/?preview=1" target="_blank" title="Open live public website">
+   <span>🟢</span> <span>Website: Live &amp; Public</span>
+  </a>
+  <a class="chip ${archInfo.cls}" href="#/archive" title="Configure Private Archive">
+   <span>${archInfo.dot}</span> <span>${archInfo.label}</span>
+  </a>
+  <a class="chip ${o.last_backup?'ok':'warn'}" href="#/backups" title="${o.last_backup?fullIST(o.last_backup.ts):'No backup yet'}">
+   <span>💾</span> <span>Last Backup: ${o.last_backup?timeAgo(o.last_backup.ts):'Not performed yet'}</span>
+  </a>
  </div>
 
- <div class="card">
-  <div class="row" style="justify-content:space-between;margin-bottom:.8rem">
-   <h3 style="margin:0">Quick Actions</h3>
+ <!-- Stat Cards 4x2 Grid -->
+ <div class="stat-grid">
+  <a href="#/list/project" class="stat-card" title="Manage Projects">
+   <div class="num"><span>${o.projects}</span> <span style="font-size:1.3rem">📁</span></div>
+   <div class="label">Projects</div>
+   <div class="sub">${o.projects?(o.projects+' published case '+((o.projects===1)?'study':'studies')):'0 published · Add first'}</div>
+  </a>
+
+  <a href="#/list/gallery" class="stat-card" title="Manage Visual Gallery">
+   <div class="num"><span>${o.artworks}</span> <span style="font-size:1.3rem">🎨</span></div>
+   <div class="label">Visual Gallery</div>
+   <div class="sub">${o.artworks?(o.artworks+' showcase artworks'):'No artworks yet · Upload'}</div>
+  </a>
+
+  <a href="#/list/post" class="stat-card" title="Manage Blog Articles">
+   <div class="num"><span>${o.posts}</span> <span style="font-size:1.3rem">📝</span></div>
+   <div class="label">Blog Articles</div>
+   <div class="sub">${o.posts} Posts · ${o.drafts} drafts</div>
+  </a>
+
+  <a href="#/list/journey" class="stat-card" title="Manage Journey Milestones">
+   <div class="num"><span>${o.milestones||0}</span> <span style="font-size:1.3rem">🧭</span></div>
+   <div class="label">Journey Timeline</div>
+   <div class="sub">${o.milestones?(o.milestones+' milestones'):'0 milestones · Document path'}</div>
+  </a>
+
+  <a href="#/list/achievement" class="stat-card" title="Manage Achievements">
+   <div class="num"><span>${o.achievements}</span> <span style="font-size:1.3rem">🏆</span></div>
+   <div class="label">Achievements</div>
+   <div class="sub">${o.achievements?(o.achievements+' honors &amp; awards'):'No achievements listed'}</div>
+  </a>
+
+  <a href="#/media" class="stat-card" title="Manage Media Library">
+   <div class="num"><span>${o.media||0}</span> <span style="font-size:1.3rem">🖼️</span></div>
+   <div class="label">Media Assets</div>
+   <div class="sub">${o.media?(o.media+' files stored'):'Empty library · Upload'}</div>
+  </a>
+
+  <a href="#/messages" class="stat-card" title="View Messages">
+   <div class="num"><span>${o.unread}</span> <span style="font-size:1.3rem">✉️</span></div>
+   <div class="label">Contact Inquiries</div>
+   <div class="sub">${o.unread?(o.unread+' new unread'):'All caught up · Zero unread'}</div>
+  </a>
+
+  <a href="#/viewers" class="stat-card" title="Manage Viewers &amp; Passcodes">
+   <div class="num"><span>${o.viewers}</span> <span style="font-size:1.3rem">👥</span></div>
+   <div class="label">Archive Viewers</div>
+   <div class="sub">${o.viewers?(o.viewers+' active accounts'):'0 accounts · Invite guests'}</div>
+  </a>
+ </div>
+
+ <!-- Site Setup Checklist -->
+ <div class="card" style="margin-bottom:1.5rem">
+  <div class="row" style="justify-content:space-between;align-items:center;margin-bottom:.4rem">
+   <h3 style="margin:0">Site Setup Checklist</h3>
+   <span style="font-size:12.5px;color:var(--muted)">Key portfolio pillars &amp; configuration</span>
   </div>
-  <div class="row">
-   <a class="btn sm" href="#/archive">🔒 Archive Settings</a>
-   <a class="btn sm" href="#/home">✏️ Edit Home Page</a>
-   <a class="btn sm" href="#/about">✏️ Edit About Page</a>
-   <a class="btn sm" href="#/themes">🎨 Theme Settings</a>
-   <a class="btn sm" href="#/media">📁 Media Library</a>
-   <a class="btn sm" href="#/messages">✉️ View Messages (${o.unread})</a>
-   <a class="btn sm" href="/?preview=1" target="_blank">👁️ Live Preview</a>
+  <div class="checklist-grid">
+   <a class="check-item" href="#/home">
+    <div class="check-icon done">✓</div>
+    <div class="check-text">
+     <b>Hero &amp; Profile Setup</b>
+     <span>Name, bio intro, and profile photos configured.</span>
+    </div>
+   </a>
+   <a class="check-item" href="#/list/project">
+    <div class="check-icon ${o.projects>0?'done':'todo'}">${o.projects>0?'✓':'○'}</div>
+    <div class="check-text">
+     <b>Case Studies &amp; Projects</b>
+     <span>${o.projects>0?o.projects+' published projects live':'Add your featured portfolio case studies'}</span>
+    </div>
+   </a>
+   <a class="check-item" href="#/list/gallery">
+    <div class="check-icon ${o.artworks>0?'done':'todo'}">${o.artworks>0?'✓':'○'}</div>
+    <div class="check-text">
+     <b>Visual Artworks &amp; Khat</b>
+     <span>${o.artworks>0?o.artworks+' showcase pieces uploaded':'Upload creative and calligraphy artworks'}</span>
+    </div>
+   </a>
+   <a class="check-item" href="#/list/post">
+    <div class="check-icon ${o.posts>0?'done':'todo'}">${o.posts>0?'✓':'○'}</div>
+    <div class="check-text">
+     <b>Blog Articles &amp; Insights</b>
+     <span>${o.posts>0?o.posts+' articles published ('+o.drafts+' drafts)':'Draft articles on craft, design & philosophy'}</span>
+    </div>
+   </a>
+   <a class="check-item" href="#/archive">
+    <div class="check-icon done">✓</div>
+    <div class="check-text">
+     <b>Private Archive Protection</b>
+     <span>Protected behind primary password &amp; viewer accounts.</span>
+    </div>
+   </a>
+   <a class="check-item" href="#/backups">
+    <div class="check-icon ${o.last_backup?'done':'todo'}">${o.last_backup?'✓':'○'}</div>
+    <div class="check-text">
+     <b>Data Protection &amp; Backups</b>
+     <span>${o.last_backup?'Automated snapshot active':'Generate your first full system backup'}</span>
+    </div>
+   </a>
   </div>
  </div>
 
+ <!-- Split Activity Feeds -->
  <div class="two">
   <div class="card">
-   <h3>Recent Updates & Activity</h3>
-   ${actList(o.recent)}
+   <div class="row" style="justify-content:space-between;align-items:center;margin-bottom:.8rem">
+    <h3 style="margin:0">Recent Content Updates</h3>
+    <a class="btn sm" href="#/activity">View All</a>
+   </div>
+   ${renderActivityFeed(o.recent)}
   </div>
-  <div>
-   <div class="card">
-    <h3>Private Archive Activity</h3>
-    ${actList(o.archive)}
+  <div class="card">
+   <div class="row" style="justify-content:space-between;align-items:center;margin-bottom:.8rem">
+    <h3 style="margin:0">Private Archive &amp; Security Events</h3>
+    <a class="btn sm" href="#/activity">View All</a>
    </div>
-   <div class="card">
-    <h3>Viewer & Settings Activity</h3>
-    ${actList(o.access)}
-   </div>
+   ${renderActivityFeed(o.archive)}
   </div>
  </div>
  `;
