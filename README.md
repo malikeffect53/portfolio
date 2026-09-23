@@ -1,54 +1,169 @@
-# Burhanuddin Malik: personal website
+# Burhanuddin Malik — Portfolio & Content Management System
 
-One small server that runs three things:
+A content-managed personal portfolio website and admin portal built for **Burhanuddin Malik**. Every section of the public website is dynamically connected to a persistent backend database and can be edited directly from the Admin Portal without modifying code.
 
-| Address | What it is |
-|---|---|
-| `/` | The public website (Home, About, Journey, Work, Gallery, Achievements, Blog, Contact) |
-| `/admin` | Your private dashboard (you only) |
-| `/private` | The read-only portal for viewers you invite (Levels A, B, C) |
+---
 
-Everything you see on the public site is edited from `/admin`. No code needed.
+## 1. System Architecture
 
-## 1. Put it online
+```mermaid
+graph TD
+    User["Public Visitors"] -->|Browse Website| PublicUI["Frontend SPA (static/index.html)"]
+    Admin["Owner / Admin"] -->|Manage Content| AdminUI["Admin Portal (static/admin.html)"]
+    Viewer["Authorized Viewers"] -->|Read-only Archive| PrivateUI["Private Archive (static/private.html)"]
 
-**Easiest path (Render):** put this folder in a GitHub repository, then on render.com choose New, then Blueprint, and pick the repository. `render.yaml` sets everything up and asks you for your `OWNER_PASSWORD`. Any other Docker host works too.
+    PublicUI -->|GET /api/content| API["Flask Backend (app.py)"]
+    AdminUI -->|REST API + CSRF| API
+    PrivateUI -->|Session Auth| API
 
-You need a host that runs a Docker app **and keeps a small persistent disk** (so your database and photos survive restarts). Fly.io, Railway and Render (with a disk) all work. Use the `Dockerfile` in this folder, mount the disk at `/data`, and set these settings (environment variables):
+    API --> SQLite[("SQLite Database (data/site.db)")]
+    API --> FileStorage["Local Uploads (data/uploads/public & private)"]
+    API -.->|Optional Sync| CloudS3["Remote Backup (S3 / R2)"]
+```
 
-| Setting | Value |
-|---|---|
-| `OWNER_PASSWORD` | a long password you choose (this is your first sign-in) |
-| `SECRET_KEY` | any long random text (keeps sign-ins secure) |
-| `HTTPS` | `1` |
-| `DATA_DIR` | `/data` |
+### Technology Stack
+* **Frontend**: Vanilla JavaScript Single Page Application (SPA), semantic HTML5, modern CSS3 with custom properties and theme engine (Royal Night, Emerald, Minimal, Classic, Modern Blue). Zero external heavy frameworks, lightweight, fast, responsive.
+* **Backend**: Python Flask REST API (`app.py`), running on WSGI/HTTP server with session-based authentication, PBKDF2 SHA-256 password hashing, HMAC-secured CSRF tokens, and rate limiting.
+* **Database**: Persistent SQLite (`data/site.db`) configured with Write-Ahead Logging (`WAL` mode) and foreign keys for high reliability and concurrency.
+* **File & Media Storage**: Segregated local storage in `data/uploads/public` (public assets) and `data/uploads/private` (permission-restricted assets), with optional automated S3 / Cloudflare R2 backup syncing.
 
-Then open `https://your-site/admin`, sign in as `owner`, and go to **Settings** to add your photographs and your Instagram / WhatsApp / Gmail links.
+---
 
-To try it on your own computer first: `pip install -r requirements.txt`, then `OWNER_PASSWORD=choose-one python app.py`, and open http://localhost:8080.
+## 2. Dynamic Content Flow: Admin → Website
 
-## 2. First things to do in /admin
-1. **Settings**: upload your homepage and About photographs, add your social links.
-2. **Projects**: open each project and upload its cover and gallery images. Tick "Show on the homepage" for the four featured ones.
-3. **Journey / Achievements**: add photos and any missing details (for example the CorelDRAW certificate).
-4. **Blog**: the five starter topics are "Coming soon" placeholders. Write an article, untick "Coming soon", and publish.
-5. **Private Archive**: add entries, then choose who can see each one. **Full Details** is for the complete story behind any project or chapter that you don't share publicly.
+The public website does not depend on hardcoded content. Content is served through the `/api/content` endpoint and updated via the Admin Portal:
 
-## 3. Sharing the private archive
-Everything you don't want public lives in the **Private Archive** section of `/admin`. People see it at `/private`. There are two ways to let them in:
+| Section | Admin Management | Public Route | Features |
+| :--- | :--- | :--- | :--- |
+| **Home Page** | `#/home` | `/` | Hero badge, titles, narrative paragraphs, CTA buttons, featured work section, quote banners, contact headers. |
+| **About Page** | `#/about` | `/about` | Biography headline, narrative story, identity pillars, growth milestones, education path, learning items. |
+| **Projects / Work** | `#/list/project` | `/work`, `/work/<slug>` | Full case studies: Hero, Overview, Story, Process, Timeline, Techniques, Challenges, Result, Learned, Gallery, Related Work. Position reordering. |
+| **Visual Gallery** | `#/list/gallery` | `/work/gallery` | Artwork titles, categories, high-resolution imagery, lightbox viewer, linked project case studies. |
+| **Journey** | `#/list/journey` | `/journey` | Chronological chapters, period markers, summaries, full narrative stories, key takeaways, anchor links. |
+| **Achievements** | `#/list/achievement` | `/achievements` | Category filters (Artistic, Sports, Leadership, Certifications, Presentations, Recognition), descriptions, certificates, and recognition notes. |
+| **Blog Articles** | `#/list/post` | `/blog`, `/blog/<slug>` | Markdown rich-text editor, categories, publish dates, excerpts, cover photos, tags, related project links. |
+| **Contact & Socials** | `#/contact` | `/contact` | Email, WhatsApp, Instagram, LinkedIn, GitHub, Twitter, and custom contact prompts. |
+| **Themes** | `#/themes` | Global selector | Active theme choices and default theme selection. |
+| **Media Library** | `#/media` | Global picker | Central asset repository, drag-and-drop upload, usage tracking, metadata editing (title, caption, alt text). |
+| **Private Archive** | `#/list/<kind>` | `/private` | Role-based private entries (Full Details, Special Achievements, Private Artwork, Reflections, Journals, Documents). |
 
-* **Shared access password (simplest).** In **Viewers & Permissions**, create an access password for a group, for example "Family". Choose a level (A, B or C) and tick which sections that password can open, then send them the password and the `/private` address. They type the password and nothing else. Use a separate password for each group. You can change permissions, change the password, or switch one off at any time, and everyone signed in with it is signed out straight away. Sign-ins last 3 days.
-* **Personal accounts (optional).** Give a person their own username and password if you want to see who signed in.
+---
 
-Every entry also has its own "who can see it" setting (all viewers, Levels A and B, Level A only, or owner only). **Full Details** is for the complete story behind any project or chapter. Use **Preview** next to a password or level to see exactly what it opens. Viewers can only read.
+## 3. Database Schema & Models
 
-## 4. Backups
-The server makes a **daily** and a **weekly** backup by itself (database plus every uploaded file). In **Backups** you can back up now, download any backup, or restore one. Restoring needs your password, the word RESTORE, and it first saves a safety copy of the current site.
+The SQLite database (`data/site.db`) contains the following tables:
 
-A backup on the same server doesn't protect you if the server is lost. So either download a backup regularly, or set up automatic copies to outside storage by adding `boto3` to `requirements.txt` and setting `BACKUP_S3_BUCKET` (and `BACKUP_S3_ENDPOINT` for non-Amazon storage such as Cloudflare R2 or Backblaze B2), plus that provider's access keys as `AWS_ACCESS_KEY_ID` and `AWS_SECRET_ACCESS_KEY`.
+* **`users`**: User accounts (Admin owner and Level A/B/C viewers).
+  * Columns: `id`, `username`, `name`, `email`, `role`, `pw` (hash), `sections` (JSON array), `active`, `created`, `updated`, `last_login`.
+* **`items`**: Unified content repository for all portfolio, blog, journey, achievement, and private archive entries.
+  * Columns: `id`, `kind` (`project`, `gallery`, `journey`, `achievement`, `post`, `detail`, `special`, `artwork`, etc.), `slug`, `title`, `data` (JSON document containing all structured fields), `status` (`published`, `draft`, `unpublished`), `access` (`A`, `B`, `C`, `O`), `pos` (integer sort order), `created`, `updated`.
+* **`media`**: Central media library indexing all uploaded images and documents.
+  * Columns: `id`, `name`, `original_name`, `ext`, `size`, `is_private`, `title`, `caption`, `alt`, `project`, `pos`, `created`.
+* **`hits`**: Privacy-friendly aggregate visitor analytics.
+  * Columns: `id`, `ts`, `day`, `vid` (anonymous visitor token), `path`, `kind`, `slug`, `src` (referrer source), `device` (Desktop/Mobile/Tablet), `secs` (time on page), `sid` (session ID).
+* **`feedback`**: Anonymous visitor ratings and impressions.
+  * Columns: `id`, `ts`, `design`, `content`, `navigation`, `overall`, `comment`.
+* **`contacts`**: Inquiries sent through the contact form.
+  * Columns: `id`, `ts`, `name`, `email`, `message`, `read`.
+* **`passcodes`**: Shared access passcodes for group archive access.
+  * Columns: `id`, `label`, `role` (`A`, `B`, `C`), `pw` (hash), `sections` (JSON array), `active`, `ver`, `created`, `last_used`, `uses`.
+* **`activity`**: Administrative audit trail for all content modifications and security events.
+  * Columns: `id`, `ts`, `actor`, `action`, `obj`, `area`.
+* **`settings`**: Key-value store for site-wide configuration.
+  * Columns: `k` (primary key), `v` (JSON or string value).
+* **`backups`**: Automated daily and weekly site archive snapshots.
+  * Columns: `id`, `ts`, `name`, `kind`, `size`, `status`, `note`.
 
-## 5. Good to know
-* **Contact messages** are stored in the dashboard (Messages). They are not emailed to you.
-* **Analytics** uses no cookies and stores no IP addresses. Share links like `https://your-site/?src=instagram` so visits from Instagram or WhatsApp apps are counted under the right source.
-* Sign-in is rate-limited, writes are protected against forged requests, uploads are checked, and private files are only served to people allowed to see them.
-* Keep the app on **one** worker (the Dockerfile already does) because it uses a small SQLite database.
+---
+
+## 4. Authentication, Authorization & Security
+
+1. **Password Security**: Passwords are never stored in plaintext. Passwords use PBKDF2 with SHA-256 and unique salt via `werkzeug.security`.
+2. **Session Protection**:
+   * HTTP-only session cookies with configurable `SameSite` and `Secure` attributes (`HTTPS=1`).
+   * Permanent sessions expire automatically after 7 days for users, 72 hours for shared passcodes.
+3. **CSRF Protection**: All mutating operations (`POST`, `PUT`, `DELETE`, `PATCH`) require a cryptographic CSRF token passed via the `X-CSRF` header.
+4. **Rate Limiting**:
+   * Sign-in attempts: Maximum 6 attempts per 15-minute window per IP.
+   * Contact messages & feedback: Maximum 5 submissions per hour per IP.
+5. **Role-Based Access Control (RBAC)**:
+   * **Owner (Rank 99)**: Full access to the Admin Portal, settings, content creation, and private archives. Can preview the archive as Level A, B, or C.
+   * **Level A (Rank 3)**: Access to Level A, B, and C private archive entries.
+   * **Level B (Rank 2)**: Access to Level B and C private archive entries.
+   * **Level C (Rank 1)**: Access only to Level C private archive entries.
+   * **Unauthenticated Visitors**: Zero access to private entries or private media files.
+6. **Server-Side File Authorization**:
+   * Private files (`/api/private/file/<name>`) verify the visitor's authentication and role rank on every single request. Direct URL access without proper permissions returns HTTP 401 or 404.
+   * Safe filenames are generated with 32-character hexadecimal hashes (`NAME_RE`), preventing path traversal attacks.
+
+---
+
+## 5. Local Setup & Running Instructions
+
+### Prerequisites
+* Python 3.10+ (recommended: Python 3.12 or 3.14)
+* Git
+
+### Step-by-Step Setup
+
+1. **Clone the repository**:
+   ```bash
+   git clone https://github.com/malikeffect53/portfolio.git
+   cd portfolio
+   ```
+
+2. **Configure environment variables**:
+   Copy `.env.example` to `.env` (or set environment variables in your terminal):
+   ```bash
+   # Linux / macOS
+   export OWNER_PASSWORD="your-admin-password"
+   export PORT=8080
+
+   # Windows PowerShell
+   $env:OWNER_PASSWORD="your-admin-password"
+   $env:PORT="8080"
+   ```
+
+3. **Install dependencies**:
+   ```bash
+   pip install -r requirements.txt
+   ```
+
+4. **Start the development server**:
+   ```bash
+   python app.py
+   ```
+
+5. **Open in browser**:
+   * **Public Website**: [http://localhost:8080/](http://localhost:8080/)
+   * **Admin Portal**: [http://localhost:8080/admin](http://localhost:8080/admin) (Sign in with username: `owner`, password: `your-admin-password`)
+   * **Private Archive**: [http://localhost:8080/private](http://localhost:8080/private)
+
+---
+
+## 6. Environment Variables
+
+| Variable | Default | Purpose |
+| :--- | :--- | :--- |
+| `OWNER_PASSWORD` | *(auto-generated)* | Initial password for the `owner` account. |
+| `PORT` | `8080` | Web server listening port. |
+| `SECRET_KEY` | *(auto-generated)* | Secret key for Flask sessions and CSRF tokens. |
+| `HTTPS` | `0` | Set to `1` in production to enforce `Secure` cookies. |
+| `DATA_DIR` | `data` | Directory where database, uploads, and backups are stored. |
+| `NO_SCHEDULER` | `0` | Set to `1` to disable background backup scheduler. |
+| `BACKUP_S3_BUCKET` | *(none)* | S3 bucket name for off-site backup synchronization. |
+| `BACKUP_S3_ENDPOINT`| *(none)* | Custom S3 endpoint URL (Cloudflare R2, Backblaze B2). |
+| `AWS_ACCESS_KEY_ID` | *(none)* | Cloud storage access key ID. |
+| `AWS_SECRET_ACCESS_KEY`| *(none)*| Cloud storage secret access key. |
+
+---
+
+## 7. Production Deployment (Render / Docker)
+
+This project includes a `Dockerfile` and `render.yaml` configuration.
+
+### Deploying to Render
+1. Go to **[dashboard.render.com](https://dashboard.render.com)**.
+2. Select **New +** → **Blueprint** and connect your GitHub repository (`malikeffect53/portfolio`).
+3. Set `OWNER_PASSWORD` when prompted.
+4. Render automatically attaches a persistent disk at `/data`, builds the Docker image, and starts the service with persistent storage.

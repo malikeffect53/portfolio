@@ -294,8 +294,14 @@ const ph=l=>`<div class="ph"><span>${esc(l||"Image to be added")}</span></div>`;
 const pic=(src,label,cls="")=>safeUrl(src)?`<img class="im ${cls}" src="${esc(safeUrl(src))}" alt="${esc(label)}" loading="lazy">`:ph(label);
 const A=(href,inner,cls="")=>`<a href="${esc(href)}" data-l${cls?` class="${cls}"`:""}>${inner}</a>`;
 const meta=p=>`<div class="meta">${p.year?`<span>${esc(p.year)}</span>`:""}${p.cat?`<span class="pill">${esc(p.cat)}</span>`:""}</div>`;
-const arr=x=>Array.isArray(x)?x:[];
-const norm=p=>({...p,facts:arr(p.facts),sections:arr(p.sections),timeline:arr(p.timeline),techniques:arr(p.techniques),challenges:arr(p.challenges),images:arr(p.images),roleList:arr(p.roleList)});
+const norm=p=>{
+ const secs=arr(p.sections).slice();
+ const has=n=>secs.some(s=>s[0]&&s[0].toLowerCase()===n.toLowerCase());
+ if(p.overview&&!has("overview"))secs.unshift(["Overview",p.overview]);
+ if(p.story&&!has("the story")&&!has("story"))secs.splice(secs.length>0?1:0,0,["The Story",p.story]);
+ if(p.process&&!has("process"))secs.splice(secs.length>1?2:secs.length,0,["Process",p.process]);
+ return {...p,facts:arr(p.facts),sections:secs,timeline:arr(p.timeline),techniques:arr(p.techniques),challenges:arr(p.challenges),images:arr(p.images),roleList:arr(p.roleList)};
+};
 const P=slug=>C.projects.find(p=>p.slug===slug);
 /* internal hyperlinks + small glossary popups, applied automatically to story text (first mention only) */
 const LINKS=[["Planetarium Maaraz","/work/planetarium-maaraz"],["Darajah Haadi Ashara Backdrop","/work/darajah-haadi-ashara-backdrop"],["Darajah Haadi Ashara backdrop","/work/darajah-haadi-ashara-backdrop"],["Darajah Haadi backdrop","/work/darajah-haadi-ashara-backdrop"],["Maaraz Ilmi 1447H","/work/maaraz-ilmi-1447h"],["Faith & Worldly Realm","/work/faith-and-worldly-realm"],["Zareeh Mubarak","/work/zareeh-mubarak"],["Aljamea-tus-Saifiyah Surat","/journey#aljamea-surat"],["Aljamea Surat","/journey#aljamea-surat"],["Aljamea-tus-Saifiyah Marol","/journey#aljamea-marol"],["Aljamea Marol","/journey#aljamea-marol"],["Thuluth","/work/learning-thuluth"],["AI","/about#learning"]];

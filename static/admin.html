@@ -210,12 +210,15 @@ const K={
   ["cover","Cover Image","media"],
   ["images","Gallery Images","medialist","Add multiple image URLs or select from Media Library."],
   ["facts","Key Facts","kv",0,"One per line, e.g. Medium: Acrylic, Duration: 5 months"],
-  ["sections","Story Sections","blocks",0,"Start each section with ## Heading, then write text below."],
+  ["overview","Overview (Case Study)","textarea",0,"Summary of the project's background, goals, and purpose."],
+  ["story","The Story (Case Study)","textarea",0,"The narrative and emotional journey behind the artwork.",6],
+  ["process","Process / Approach (Case Study)","textarea",0,"How you approached and executed the work.",6],
   ["timeline","Timeline Process Steps","lines",0,"One step per line."],
   ["techniques","Techniques & Skills","lines",0,"One per line."],
   ["challenges","Challenges Faced","lines",0,"One per line."],
   ["result","Final Result","textarea"],
   ["learned","What I Learned","textarea"],
+  ["sections","Additional Story Sections (Optional)","blocks",0,"Start each additional section with ## Heading, then write text below."],
   ["arabic","Arabic Calligraphy Title (Optional)","text"],
   ["roleList","“My Role” Popup Details","lines",0,"One item per line."],
   ["interactive","Interactive Component","select",["","eye"],"“eye” enables the interactive Eye of Faith explorer."],
@@ -1055,9 +1058,17 @@ async function showMediaDetail(name){
    </div>
    <div style="border-top:1px solid var(--line);padding-top:.8rem">
     <b>Used In (${usage.count}):</b>
-    <ul style="padding-left:1.1rem;margin-top:.4rem;color:var(--muted);max-height:120px;overflow-y:auto">
+    <ul style="padding-left:1.1rem;margin-top:.4rem;color:var(--muted);max-height:100px;overflow-y:auto">
      ${usage.uses.map(u=>u.type==="item"?`<li>${esc(u.kind)}: <a href="#/edit/${u.kind}/${u.id}">${esc(u.title)}</a></li>`:`<li>Setting: <code>${esc(u.key)}</code></li>`).join("")||"<li>Not currently referenced in any page or item</li>"}
     </ul>
+   </div>
+   <div style="border-top:1px solid var(--line);padding-top:.8rem;margin-top:.8rem">
+    <b>Media Metadata:</b>
+    <label style="margin-top:.4rem">Title / Display Name<input id="md_title" value="${esc(it.title||'')}" placeholder="e.g. Zareeh Canvas In Progress"></label>
+    <label>Caption<input id="md_caption" value="${esc(it.caption||'')}" placeholder="Display caption or description"></label>
+    <label>Alt Text (Accessibility)<input id="md_alt" value="${esc(it.alt||'')}" placeholder="Descriptive text for screen readers"></label>
+    <label>Linked Project Slug (Optional)<input id="md_proj" value="${esc(it.project||'')}" placeholder="e.g. zareeh-mubarak"></label>
+    <button type="button" class="pri sm" id="md_save" style="margin-top:.4rem">Save Metadata</button>
    </div>
   </div>
  </div>
@@ -1066,6 +1077,16 @@ async function showMediaDetail(name){
  </div>
  `;
  $("#dlg").showModal();
+ $("#md_save").onclick=guard(async()=>{
+  await api(`/api/admin/media/${encodeURIComponent(name)}`,"PUT",{
+   title:$("#md_title").value,
+   caption:$("#md_caption").value,
+   alt:$("#md_alt").value,
+   project:$("#md_proj").value
+  });
+  toast("Media metadata saved!");
+  if(location.hash==="#/media")VIEWS.media();
+ });
  $("#md_del").onclick=guard(async()=>{
   if(!confirm(`Delete "${it.original_name}"? This file will be permanently removed.`))return;
   await api(`/api/admin/media/${encodeURIComponent(name)}`,"DELETE");
@@ -1214,6 +1235,20 @@ async function editView(kind,id){
  const k=K[kind];if(!k)throw new Error("Unknown section.");
  let it={title:"",slug:"",pos:0,status:PRIV.includes(kind)?"published":"draft",access:"A",data:{}};
  if(id!=="new")it=await api("/api/admin/items/"+id);
+ if(kind==="project"&&it.data){
+  if(!it.data.overview&&Array.isArray(it.data.sections)){
+   const o=it.data.sections.find(s=>s[0]&&s[0].toLowerCase()==="overview");
+   if(o)it.data.overview=o[1];
+  }
+  if(!it.data.story&&Array.isArray(it.data.sections)){
+   const s=it.data.sections.find(s=>s[0]&&(s[0].toLowerCase()==="the story"||s[0].toLowerCase()==="story"));
+   if(s)it.data.story=s[1];
+  }
+  if(!it.data.process&&Array.isArray(it.data.sections)){
+   const pr=it.data.sections.find(s=>s[0]&&s[0].toLowerCase()==="process");
+   if(pr)it.data.process=pr[1];
+  }
+ }
  const val=n=>TOP.includes(n)?it[n]:it.data[n];
 
  $("#view").innerHTML=`

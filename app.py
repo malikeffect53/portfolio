@@ -82,8 +82,8 @@ app.config.update(
 
 # ------------------------------------------------------------------ database
 SCHEMA = """
-CREATE TABLE IF NOT EXISTS users(id INTEGER PRIMARY KEY, username TEXT UNIQUE, name TEXT, role TEXT, pw TEXT,
-  sections TEXT DEFAULT '[]', active INTEGER DEFAULT 1, created TEXT, last_login TEXT);
+CREATE TABLE IF NOT EXISTS users(id INTEGER PRIMARY KEY, username TEXT UNIQUE, name TEXT, email TEXT DEFAULT '', role TEXT, pw TEXT,
+  sections TEXT DEFAULT '[]', active INTEGER DEFAULT 1, created TEXT, updated TEXT DEFAULT '', last_login TEXT);
 CREATE TABLE IF NOT EXISTS items(id INTEGER PRIMARY KEY, kind TEXT, slug TEXT, title TEXT, data TEXT DEFAULT '{}',
   status TEXT DEFAULT 'published', access TEXT DEFAULT 'A', pos INTEGER DEFAULT 0, created TEXT, updated TEXT);
 CREATE INDEX IF NOT EXISTS ix_items ON items(kind, status);
@@ -98,7 +98,8 @@ CREATE TABLE IF NOT EXISTS passcodes(id INTEGER PRIMARY KEY, label TEXT, role TE
   active INTEGER DEFAULT 1, ver TEXT, created TEXT, last_used TEXT, uses INTEGER DEFAULT 0);
 CREATE TABLE IF NOT EXISTS settings(k TEXT PRIMARY KEY, v TEXT);
 CREATE TABLE IF NOT EXISTS backups(id INTEGER PRIMARY KEY, ts TEXT, name TEXT UNIQUE, kind TEXT, size INT, status TEXT, note TEXT);
-CREATE TABLE IF NOT EXISTS media(id INTEGER PRIMARY KEY, name TEXT UNIQUE, original_name TEXT, ext TEXT, size INT, is_private INT DEFAULT 0, created TEXT);
+CREATE TABLE IF NOT EXISTS media(id INTEGER PRIMARY KEY, name TEXT UNIQUE, original_name TEXT, ext TEXT, size INT, is_private INT DEFAULT 0,
+  title TEXT DEFAULT '', caption TEXT DEFAULT '', alt TEXT DEFAULT '', project TEXT DEFAULT '', pos INTEGER DEFAULT 0, created TEXT);
 CREATE INDEX IF NOT EXISTS ix_media_ext ON media(ext);
 """
 
@@ -155,6 +156,16 @@ def sync_media(c):
 def init_db():
     c = connect()
     c.executescript(SCHEMA)
+    for col, ctype in (("title", "TEXT DEFAULT ''"), ("caption", "TEXT DEFAULT ''"), ("alt", "TEXT DEFAULT ''"), ("project", "TEXT DEFAULT ''"), ("pos", "INTEGER DEFAULT 0")):
+        try:
+            c.execute(f"ALTER TABLE media ADD COLUMN {col} {ctype}")
+        except sqlite3.OperationalError:
+            pass
+    for col, ctype in (("updated", "TEXT DEFAULT ''"), ("email", "TEXT DEFAULT ''")):
+        try:
+            c.execute(f"ALTER TABLE users ADD COLUMN {col} {ctype}")
+        except sqlite3.OperationalError:
+            pass
     env_pw = os.environ.get("OWNER_PASSWORD", "").strip()
     if not c.execute("SELECT 1 FROM users WHERE role='owner'").fetchone():
         pw = env_pw or secrets.token_urlsafe(12)
@@ -524,6 +535,11 @@ def media_list():
             "id": r["id"],
             "name": r["name"],
             "original_name": r["original_name"] or r["name"],
+            "title": r.get("title") or "",
+            "caption": r.get("caption") or "",
+            "alt": r.get("alt") or "",
+            "project": r.get("project") or "",
+            "pos": r.get("pos") or 0,
             "ext": r["ext"],
             "size": r["size"],
             "is_private": bool(r["is_private"]),
@@ -531,6 +547,21 @@ def media_list():
             "url": f"/api/private/file/{r['name']}" if r["is_private"] else f"/uploads/{r['name']}"
         })
     return jsonify(items=items)
+
+
+@app.put("/api/admin/media/<name>")
+@owner_only
+def media_update(name):
+    if not NAME_RE.match(name):
+        abort(404)
+    j = request.get_json(silent=True) or {}
+    title = str(j.get("title", "")).strip()[:200]
+    caption = str(j.get("caption", "")).strip()[:500]
+    alt = str(j.get("alt", "")).strip()[:300]
+    proj = str(j.get("project", "")).strip()[:100]
+    ex("UPDATE media SET title=?, caption=?, alt=?, project=? WHERE name=?", title, caption, alt, proj, name)
+    log("Media updated", (title or name)[:100], "portfolio")
+    return jsonify(ok=True)
 
 
 @app.get("/api/admin/media/<name>/usage")
