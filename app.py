@@ -880,42 +880,87 @@ def contacts_delete(i):
 
 
 # ------------------------------------------------------------------ viewers + private archive
-PC_HOURS = 72  # how long an access-password sign-in lasts
+PC_HOURS = 72  # default access-password sign-in hours
 
 
 def passcode_user():
-    """A visitor who unlocked the private archive with a shared access password (no personal account)."""
+    """A visitor who unlocked the private archive with primary password or shared access passcode."""
     pid = session.get("pc")
     if not pid or time.time() > session.get("pc_exp", 0):
         return None
-    r = q1("SELECT * FROM passcodes WHERE id=? AND active=1", pid)
-    if not r or r["ver"] != session.get("pc_ver"):
-        return None
-    return dict(id=-r["id"], username="pass:" + r["label"], name=r["label"], role=r["role"], sections=r["sections"], active=1)
+    if pid == "primary":
+        if session.get("pc_ver") != setting("archive_password_ver", "1"):
+            return None
+        role = session.get("pc_role", setting("archive_default_role", "B"))
+        if role not in LV:
+            role = "B"
+        secs = role_sections().get(role, PRIVATE_KINDS[:])
+        return dict(id=-999, username="pass:primary", name=session.get("pc_label", "Archive Viewer"), role=role, sections=json.dumps(secs), active=1)
+    if isinstance(pid, int):
+        r = q1("SELECT * FROM passcodes WHERE id=? AND active=1", pid)
+        if not r or r["ver"] != session.get("pc_ver"):
+            return None
+        return dict(id=-r["id"], username="pass:" + r["label"], name=r["label"], role=r["role"], sections=r["sections"], active=1)
+    return None
 
 
 @app.post("/api/private/unlock")
 def unlock():
+    arch_status = setting("archive_status", "enabled")
+    if arch_status == "disabled" and not is_owner():
+        return jsonify(error="The private archive is currently disabled."), 403
+    if arch_status == "maintenance" and not is_owner():
+        return jsonify(error="The private archive is temporarily offline for maintenance."), 403
+
     j = request.get_json(silent=True) or {}
     pw = str(j.get("password", ""))[:200]
     key = "unlock:" + request.remote_addr
     if rl_over(key, 6, 900):
         log("Access-password attempts blocked", "", "security", actor="security")
         return jsonify(error="Too many attempts. Please wait 15 minutes and try again."), 429
+
+    hours = int(setting("archive_session_hours", "72") or 72)
+
+    # 1. Primary Archive Password Check
+    arch_hash = setting("archive_password_hash")
+    if arch_hash and check_password_hash(arch_hash, pw):
+        def_role = setting("archive_default_role", "B")
+        if def_role not in LV:
+            def_role = "B"
+        session.clear()
+        session.permanent = True
+        session["pc"] = "primary"
+        session["pc_ver"] = setting("archive_password_ver", "1")
+        session["pc_role"] = def_role
+        session["pc_label"] = "Archive Access"
+        session["pc_exp"] = time.time() + hours * 3600
+        session["csrf"] = secrets.token_urlsafe(24)
+        log("Archive unlocked with primary password", "", "archive", actor="archive password")
+        return jsonify(role=def_role, name="Private Archive Viewer", csrf=session["csrf"])
+
+    # 2. Shared Passcodes Check
     hit = None
     for r in qa("SELECT * FROM passcodes WHERE active=1"):
         if check_password_hash(r["pw"], pw) and not hit:
             hit = r
-    if not hit:
-        check_password_hash(DUMMY, pw)
-        rl_add(key)
-        log("Wrong access password", "", "security", actor="security")
-        return jsonify(error="That password isn't right."), 401
-    ex("UPDATE passcodes SET last_used=?, uses=uses+1 WHERE id=?", now(), hit["id"])
-    session.permanent = True
-    session["pc"], session["pc_ver"], session["pc_exp"] = hit["id"], hit["ver"], time.time() + PC_HOURS * 3600
-    log("Archive unlocked", hit["label"], "security", actor="access password")
-    return jsonify(role=hit["role"], name=hit["label"])
+    if hit:
+        session.clear()
+        session.permanent = True
+        session["pc"] = hit["id"]
+        session["pc_ver"] = hit["ver"]
+        session["pc_role"] = hit["role"]
+        session["pc_label"] = hit["label"]
+        session["pc_exp"] = time.time() + hours * 3600
+        session["csrf"] = secrets.token_urlsafe(24)
+        ex("UPDATE passcodes SET last_used=?, uses=uses+1 WHERE id=?", now(), hit["id"])
+        log("Archive unlocked with passcode", hit["label"], "archive", actor=hit["label"])
+        return jsonify(role=hit["role"], name=hit["label"], csrf=session["csrf"])
+
+    # Neither matched
+    check_password_hash(DUMMY, pw)
+    rl_add(key)
+    log("Wrong archive password attempt", "", "security", actor="security")
+    return jsonify(error="That password isn't right."), 401
 
 
 def viewer_ctx(u):
@@ -948,10 +993,20 @@ def private_items():
     u = me() or passcode_user()
     if not u:
         return jsonify(error="Please sign in."), 401
+
+    arch_status = setting("archive_status", "enabled")
+    if arch_status == "disabled" and u.get("role") != "owner":
+        return jsonify(error="The private archive is currently disabled."), 403
+    if arch_status == "maintenance" and u.get("role") != "owner":
+        return jsonify(error="The private archive is temporarily offline for maintenance."), 403
+
     rank, sections, full, label = viewer_ctx(u)
-    rows = [item_out(r) for r in db().execute("SELECT * FROM items WHERE kind IN (%s) ORDER BY created DESC" % ",".join("?" * len(PRIVATE_KINDS)), PRIVATE_KINDS)]
+    rows = [item_out(r) for r in db().execute("SELECT * FROM items WHERE kind IN (%s) ORDER BY pos, id DESC" % ",".join("?" * len(PRIVATE_KINDS)), PRIVATE_KINDS)]
     vis = [r for r in rows if can_see(r, rank, sections, full)]
-    return jsonify(label=label, owner=u["role"] == "owner", name=u["name"],
+    title = setting("archive_title") or "Private Archive | Burhanuddin Malik"
+    welcome = setting("archive_welcome") or "A curated collection of behind-the-scenes work, personal reflections, and milestone documentation."
+    return jsonify(title=title, welcome=welcome, status=arch_status,
+                   label=label, owner=u["role"] == "owner", name=u["name"],
                    sections=[dict(key=k, label=ARCHIVE[k]) for k in PRIVATE_KINDS if k in sections], items=vis)
 
 
@@ -963,14 +1018,79 @@ def private_file(name):
     if not NAME_RE.match(name) or not os.path.exists(os.path.join(UP_PRIV, name)):
         abort(404)
     rank, sections, full, _ = viewer_ctx(u)
+    rows = [item_out(r) for r in db().execute("SELECT * FROM items WHERE kind IN (%s) AND data LIKE ?" % ",".join("?" * len(PRIVATE_KINDS)), PRIVATE_KINDS + [f"%{name}%"])]
     if not full:
-        rows = [item_out(r) for r in db().execute("SELECT * FROM items WHERE kind IN (%s) AND data LIKE ?" % ",".join("?" * len(PRIVATE_KINDS)), PRIVATE_KINDS + [f"%{name}%"])]
         if not any(can_see(r, rank, sections, False) for r in rows):
             abort(404)
-    ext = name.rsplit(".", 1)[1]
-    resp = send_from_directory(UP_PRIV, name, as_attachment=ext not in IMG_EXT)
+    ext = name.rsplit(".", 1)[1].lower()
+    dl_requested = request.args.get("dl") == "1"
+    allow_dl = full or any((r.get("data", {}).get("allow_download") or False) for r in rows)
+    as_attachment = (ext not in IMG_EXT and dl_requested and allow_dl)
+    resp = send_from_directory(UP_PRIV, name, as_attachment=as_attachment)
     resp.headers["Cache-Control"] = "private, no-store"
     return resp
+
+
+# ------------------------------------------------------------------ archive admin settings
+@app.get("/api/admin/archive/settings")
+@owner_only
+def archive_settings_get():
+    stats = {
+        "total_items": q1("SELECT COUNT(*) c FROM items WHERE kind IN (%s)" % ",".join("?" * len(PRIVATE_KINDS)), *PRIVATE_KINDS)["c"],
+        "published_items": q1("SELECT COUNT(*) c FROM items WHERE kind IN (%s) AND status='published'" % ",".join("?" * len(PRIVATE_KINDS)), *PRIVATE_KINDS)["c"],
+        "draft_items": q1("SELECT COUNT(*) c FROM items WHERE kind IN (%s) AND status!='published'" % ",".join("?" * len(PRIVATE_KINDS)), *PRIVATE_KINDS)["c"],
+        "active_viewers": q1("SELECT COUNT(*) c FROM users WHERE role!='owner' AND active=1")["c"],
+        "disabled_viewers": q1("SELECT COUNT(*) c FROM users WHERE role!='owner' AND active=0")["c"],
+        "active_passcodes": q1("SELECT COUNT(*) c FROM passcodes WHERE active=1")["c"],
+    }
+    return jsonify(
+        status=setting("archive_status", "enabled"),
+        title=setting("archive_title", "Private Archive | Burhanuddin Malik"),
+        welcome=setting("archive_welcome", "A curated collection of behind-the-scenes work, personal reflections, and milestone documentation."),
+        session_hours=int(setting("archive_session_hours", "72") or 72),
+        default_role=setting("archive_default_role", "B"),
+        has_password=bool(setting("archive_password_hash")),
+        password_changed_at=setting("archive_password_changed_at", ""),
+        stats=stats,
+        archive_sections=ARCHIVE,
+        recent_activity=qa("SELECT * FROM activity WHERE area IN ('archive','viewers','security') ORDER BY id DESC LIMIT 20")
+    )
+
+
+@app.put("/api/admin/archive/settings")
+@owner_only
+def archive_settings_put():
+    j = request.get_json(silent=True) or {}
+    if "status" in j and j["status"] in ("enabled", "maintenance", "disabled"):
+        put_setting("archive_status", j["status"])
+    if "title" in j:
+        put_setting("archive_title", str(j["title"]).strip()[:120])
+    if "welcome" in j:
+        put_setting("archive_welcome", str(j["welcome"]).strip()[:1000])
+    if "session_hours" in j:
+        put_setting("archive_session_hours", str(max(1, min(720, int(j["session_hours"] or 72)))))
+    if "default_role" in j and j["default_role"] in LV:
+        put_setting("archive_default_role", j["default_role"])
+    log("Archive settings updated", j.get("status", ""), "archive")
+    return jsonify(ok=True)
+
+
+@app.post("/api/admin/archive/password")
+@owner_only
+def archive_password_post():
+    j = request.get_json(silent=True) or {}
+    new_pw = str(j.get("new_password", ""))
+    confirm_pw = str(j.get("confirm_password", ""))
+    if len(new_pw) < 8:
+        raise ValueError("Password must be at least 8 characters.")
+    if new_pw != confirm_pw:
+        raise ValueError("Password confirmation does not match.")
+    put_setting("archive_password_hash", generate_password_hash(new_pw))
+    ts = now()
+    put_setting("archive_password_changed_at", ts)
+    put_setting("archive_password_ver", secrets.token_hex(8))
+    log("Archive password changed", "All existing archive sessions revoked", "security")
+    return jsonify(ok=True, changed_at=ts)
 
 
 def viewer_out(u):
@@ -1449,13 +1569,15 @@ def admin_page():
 
 @app.get("/private")
 @app.get("/private/")
+@app.get("/archive")
+@app.get("/archive/")
 def private_page():
     return html("private.html")
 
 
 @app.get("/robots.txt")
 def robots():
-    return Response("User-agent: *\nDisallow: /admin\nDisallow: /private\nDisallow: /api/\n", mimetype="text/plain")
+    return Response("User-agent: *\nDisallow: /admin\nDisallow: /private\nDisallow: /archive\nDisallow: /api/\n", mimetype="text/plain")
 
 
 @app.get("/healthz")

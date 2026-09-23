@@ -150,7 +150,8 @@ dialog::backdrop{background:rgba(3,8,24,.75);backdrop-filter:blur(3px)}
    <div class="top-actions">
     <div style="position:relative">
      <button class="btn sm" id="prevmenu-btn">👁️ Preview ▾</button>
-     <div id="prevmenu" style="display:none;position:absolute;right:0;top:38px;background:var(--bg2);border:1px solid var(--line);border-radius:10px;padding:.4rem;min-width:170px;box-shadow:0 12px 30px rgba(0,0,0,.5);z-index:90">
+     <div id="prevmenu" style="display:none;position:absolute;right:0;top:38px;background:var(--bg2);border:1px solid var(--line);border-radius:10px;padding:.4rem;min-width:180px;box-shadow:0 12px 30px rgba(0,0,0,.5);z-index:90">
+      <div style="font-size:.7rem;text-transform:uppercase;color:var(--muted);padding:.2rem .6rem;letter-spacing:.05em">Public Website</div>
       <a class="btn sm" style="width:100%;border:0;justify-content:flex-start" href="/?preview=1" target="_blank">Home Page</a>
       <a class="btn sm" style="width:100%;border:0;justify-content:flex-start" href="/about?preview=1" target="_blank">About Page</a>
       <a class="btn sm" style="width:100%;border:0;justify-content:flex-start" href="/work?preview=1" target="_blank">Work / Projects</a>
@@ -158,6 +159,12 @@ dialog::backdrop{background:rgba(3,8,24,.75);backdrop-filter:blur(3px)}
       <a class="btn sm" style="width:100%;border:0;justify-content:flex-start" href="/journey?preview=1" target="_blank">Journey Timeline</a>
       <a class="btn sm" style="width:100%;border:0;justify-content:flex-start" href="/blog?preview=1" target="_blank">Blog Articles</a>
       <a class="btn sm" style="width:100%;border:0;justify-content:flex-start" href="/contact?preview=1" target="_blank">Contact Page</a>
+      <div style="border-top:1px solid var(--line);margin:.4rem 0"></div>
+      <div style="font-size:.7rem;text-transform:uppercase;color:var(--muted);padding:.2rem .6rem;letter-spacing:.05em">Private Archive</div>
+      <a class="btn sm" style="width:100%;border:0;justify-content:flex-start" href="/archive" target="_blank">Archive (Owner)</a>
+      <a class="btn sm" style="width:100%;border:0;justify-content:flex-start" href="/archive?as_level=A" target="_blank">Archive (Level A)</a>
+      <a class="btn sm" style="width:100%;border:0;justify-content:flex-start" href="/archive?as_level=B" target="_blank">Archive (Level B)</a>
+      <a class="btn sm" style="width:100%;border:0;justify-content:flex-start" href="/archive?as_level=C" target="_blank">Archive (Level C)</a>
      </div>
     </div>
     <a class="btn pri sm" href="#/edit/project/new">+ Project</a>
@@ -293,7 +300,8 @@ const K={
   ["title","Title","text"],["date","Date","date"],["text","Journal Entry","textarea",0,"",14]
  ]},
  file:{group:"Private Archive",label:"Documents & Files",one:"File",fields:[
-  ["title","Document Title","text"],["details","Description","textarea"],["file","File Attachment","pfile"]
+  ["title","Document Title","text"],["details","Description","textarea"],["file","File Attachment","pfile"],
+  ["allow_download","Allow File Download","bool",0,"If checked, viewers can download this file. If unchecked, direct download is restricted and viewing is inline."]
  ]}
 };
 
@@ -507,6 +515,7 @@ const NAVS=[
  ["Media Library","media"],
  ["Theme Settings","themes"],
  ["Private Archive"],
+ ["Archive Overview & Settings","archive"],
  ["Full Details","list/detail","sub"],
  ["Journal","list/journal","sub"],
  ["Private Artwork","list/artwork","sub"],
@@ -626,6 +635,7 @@ VIEWS.overview=async()=>{
    <h3 style="margin:0">Quick Actions</h3>
   </div>
   <div class="row">
+   <a class="btn sm" href="#/archive">🔒 Archive Settings</a>
    <a class="btn sm" href="#/home">✏️ Edit Home Page</a>
    <a class="btn sm" href="#/about">✏️ Edit About Page</a>
    <a class="btn sm" href="#/themes">🎨 Theme Settings</a>
@@ -1309,6 +1319,206 @@ async function editView(kind,id){
   });
  }
 }
+
+/* ---------- private archive control & settings view ---------- */
+VIEWS.archive=async()=>{
+ const r=await api("/api/admin/archive/settings");
+ $("#view").innerHTML=`
+ <div class="row" style="justify-content:space-between;margin-bottom:1rem">
+  <div>
+   <h1 style="margin:0">Private Archive Control &amp; Settings</h1>
+   <p style="color:var(--muted);font-size:.9rem">Central management for viewer access, primary credentials, maintenance mode, and publication status.</p>
+  </div>
+  <div class="row">
+   <a class="btn pri sm" href="/archive" target="_blank">👁️ Open Archive (Owner View)</a>
+   <a class="btn sm" href="#/viewers">👥 Viewers &amp; Permissions</a>
+  </div>
+ </div>
+
+ <div class="tiles">
+  <div class="tile">
+   <b>${r.stats.total_items}</b>
+   <span>Archive Items (${r.stats.published_items} pub, ${r.stats.draft_items} draft)</span>
+  </div>
+  <div class="tile">
+   <b>${r.stats.active_viewers}</b>
+   <span>Active Viewers (${r.stats.disabled_viewers} disabled)</span>
+  </div>
+  <div class="tile">
+   <b>${r.stats.active_passcodes}</b>
+   <span>Shared Passcodes</span>
+  </div>
+  <div class="tile">
+   <b style="color:${r.status==='enabled'?'var(--ok)':'var(--gold)'}">${r.status.toUpperCase()}</b>
+   <span>Archive Status</span>
+  </div>
+ </div>
+
+ <div class="card">
+  <div class="row" style="justify-content:space-between;align-items:center;margin-bottom:.6rem">
+   <div>
+    <h3 style="margin:0">Preview Archive As</h3>
+    <p class="help" style="margin:.2rem 0 0">Inspect exactly what guests and viewers see at each authorization tier without logging out.</p>
+   </div>
+  </div>
+  <div class="row" style="gap:.6rem;flex-wrap:wrap">
+   <a class="btn sm" href="/archive" target="_blank">👑 Preview as Owner (All Items)</a>
+   <a class="btn sm" href="/archive?as_level=A" target="_blank">🥇 Preview as Level A (Unrestricted View)</a>
+   <a class="btn sm" href="/archive?as_level=B" target="_blank">🥈 Preview as Level B (Medium)</a>
+   <a class="btn sm" href="/archive?as_level=C" target="_blank">🥉 Preview as Level C (Basic)</a>
+  </div>
+ </div>
+
+ <div class="two">
+  <div class="card">
+   <div class="row" style="justify-content:space-between;align-items:center;margin-bottom:.8rem">
+    <h3 style="margin:0">Primary Archive Password</h3>
+    <span class="pill ${r.has_password?'ok':'warn'}">${r.has_password?'Password Configured':'Not Configured'}</span>
+   </div>
+   <p class="help" style="margin-bottom:1rem">Allows trusted guests to unlock <code>/archive</code> directly without a personalized username. Password hashes are salted and stored securely (never in plaintext). Changing the password instantly revokes all existing unlocked sessions.</p>
+   <div style="background:var(--bg);border:1px solid var(--line);border-radius:8px;padding:.8rem;margin-bottom:1.2rem;font-size:.85rem">
+    <p style="margin:0 0 .3rem"><strong>Status:</strong> ${r.has_password?'Active &amp; Enforced':'No primary password set'}</p>
+    <p style="margin:0"><strong>Last Rotated:</strong> ${r.password_changed_at?fdate(r.password_changed_at):'Never'}</p>
+   </div>
+
+   <form id="arc_pw_form" style="border-top:1px solid var(--line);padding-top:1rem">
+    <h4 style="margin:0 0 .8rem">Set / Change Primary Password</h4>
+    <label>New Archive Password (min. 8 characters)
+     <input type="password" id="arc_new_pw" placeholder="Enter new strong password" required minlength="8" autocomplete="new-password">
+    </label>
+    <label>Confirm Password
+     <input type="password" id="arc_conf_pw" placeholder="Confirm new password" required minlength="8" autocomplete="new-password">
+    </label>
+    <div id="arc_pw_err" class="err" style="display:none;margin-bottom:.8rem"></div>
+    <button type="submit" class="pri sm" id="arc_pw_btn">Update Archive Password</button>
+   </form>
+  </div>
+
+  <div class="card">
+   <h3 style="margin:0 0 .8rem">Archive Configuration</h3>
+   <form id="arc_cfg_form">
+    <label>Archive Operational Mode
+     <select id="arc_status">
+      <option value="enabled" ${r.status==='enabled'?'selected':''}>🟢 Enabled — Normal viewer &amp; guest access</option>
+      <option value="maintenance" ${r.status==='maintenance'?'selected':''}>🟡 Maintenance Mode — Offline for viewers (Owner can preview)</option>
+      <option value="disabled" ${r.status==='disabled'?'selected':''}>🔴 Disabled — Complete lockdown for non-owners</option>
+     </select>
+     <span class="help">When in Maintenance Mode, guests see a maintenance notice while the owner retains preview access.</span>
+    </label>
+
+    <label>Archive Public Title
+     <input id="arc_title" value="${esc(r.title)}" maxlength="120" placeholder="e.g. Private Archive | Burhanuddin Malik">
+    </label>
+
+    <label>Archive Welcome Message
+     <textarea id="arc_welcome" rows="3" placeholder="Introductory greeting shown above sections">${esc(r.welcome)}</textarea>
+    </label>
+
+    <div class="two">
+     <label>Session Expiration (Hours)
+      <input type="number" id="arc_session" value="${r.session_hours||72}" min="1" max="720">
+      <span class="help">Duration before viewers must sign in again.</span>
+     </label>
+     <label>Primary Passcode Default Level
+      <select id="arc_role">
+       <option value="A" ${r.default_role==='A'?'selected':''}>Level A (Full Access)</option>
+       <option value="B" ${r.default_role==='B'?'selected':''}>Level B (Medium Access)</option>
+       <option value="C" ${r.default_role==='C'?'selected':''}>Level C (Basic Access)</option>
+      </select>
+      <span class="help">Role granted when unlocking via primary archive password.</span>
+     </label>
+    </div>
+
+    <div class="row" style="margin-top:1.2rem">
+     <button type="submit" class="pri sm">Save Archive Settings</button>
+    </div>
+   </form>
+  </div>
+ </div>
+
+ <div class="card">
+  <h3 style="margin:0 0 .8rem">Archive Content Sections</h3>
+  <p class="help" style="margin-bottom:1rem">Jump directly to individual private archive section editors to add, update, or reorder content items.</p>
+  <div class="row" style="flex-wrap:wrap;gap:.6rem">
+   <a class="btn sm" href="#/list/detail">📋 Full Details</a>
+   <a class="btn sm" href="#/list/journal">📓 Personal Journal</a>
+   <a class="btn sm" href="#/list/artwork">🎨 Private Artwork</a>
+   <a class="btn sm" href="#/list/appreciation">⭐ Appreciation</a>
+   <a class="btn sm" href="#/list/reflection">💭 Reflections</a>
+   <a class="btn sm" href="#/list/special">🏆 Special Achievements</a>
+   <a class="btn sm" href="#/list/file">📁 Documents &amp; Files</a>
+  </div>
+ </div>
+
+ <div class="card">
+  <div class="row" style="justify-content:space-between;align-items:center;margin-bottom:.8rem">
+   <h3 style="margin:0">Recent Archive &amp; Security Activity</h3>
+   <a class="btn sm" href="#/activity">View All Logs</a>
+  </div>
+  ${r.recent_activity&&r.recent_activity.length?`
+   <div class="scroll">
+    <table>
+     <thead>
+      <tr><th>Timestamp</th><th>Action</th><th>Details</th><th>Actor</th><th>Area</th></tr>
+     </thead>
+     <tbody>
+      ${r.recent_activity.map(a=>`
+       <tr>
+        <td style="white-space:nowrap;font-size:.82rem;color:var(--muted)">${fdate(a.ts)}</td>
+        <td><strong>${esc(a.action)}</strong></td>
+        <td style="color:var(--muted);font-size:.85rem">${esc(a.obj||'—')}</td>
+        <td><span class="pill sm">${esc(a.actor||'owner')}</span></td>
+        <td><span class="pill sm ${a.area==='security'?'warn':''}">${esc(a.area)}</span></td>
+       </tr>
+      `).join('')}
+     </tbody>
+    </table>
+   </div>
+  `:`<p style="color:var(--muted)">No archive activity logged yet.</p>`}
+ </div>
+ `;
+
+ $("#arc_pw_form").onsubmit=guard(async e=>{
+  e.preventDefault();
+  const errEl=$("#arc_pw_err");
+  errEl.style.display="none";
+  const pw=$("#arc_new_pw").value;
+  const conf=$("#arc_conf_pw").value;
+  if(pw.length<8){
+   errEl.textContent="Password must be at least 8 characters long.";
+   errEl.style.display="block";
+   return;
+  }
+  if(pw!==conf){
+   errEl.textContent="Passwords do not match.";
+   errEl.style.display="block";
+   return;
+  }
+  $("#arc_pw_btn").disabled=true;
+  try{
+   await api("/api/admin/archive/password","POST",{new_password:pw,confirm_password:conf});
+   toast("Primary archive password updated! Active viewer sessions have been revoked.");
+   VIEWS.archive();
+  }catch(err){
+   errEl.textContent=err.message||"Failed to update password.";
+   errEl.style.display="block";
+   $("#arc_pw_btn").disabled=false;
+  }
+ });
+
+ $("#arc_cfg_form").onsubmit=guard(async e=>{
+  e.preventDefault();
+  await api("/api/admin/archive/settings","PUT",{
+   status:$("#arc_status").value,
+   title:$("#arc_title").value,
+   welcome:$("#arc_welcome").value,
+   session_hours:parseInt($("#arc_session").value,10)||72,
+   default_role:$("#arc_role").value
+  });
+  toast("Archive configuration saved successfully!");
+  VIEWS.archive();
+ });
+};
 
 /* ---------- viewers & permissions view ---------- */
 const secChecks=(arch,sel,name)=>`<div class="checks">${Object.entries(arch).map(([k,l])=>`<label class="chk" style="margin:0"><input type="checkbox" name="${name}" value="${k}" ${sel.includes(k)?"checked":""}> ${esc(l)}</label>`).join("")}</div>`;

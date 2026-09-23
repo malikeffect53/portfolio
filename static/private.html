@@ -4,89 +4,315 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="robots" content="noindex,nofollow">
-<title>Private Portal | Burhanuddin Malik</title>
-<link href="https://fonts.googleapis.com/css2?family=Amiri&family=Hanken+Grotesk:wght@400;500;600&family=Instrument+Serif:ital@0;1&display=swap" rel="stylesheet">
+<title>Private Archive | Burhanuddin Malik</title>
+<link href="https://fonts.googleapis.com/css2?family=Amiri&family=Hanken+Grotesk:wght@400;500;600;700&family=Instrument+Serif:ital@0;1&display=swap" rel="stylesheet">
 <style>
-:root{--bg:#0e1731;--bg2:#16224a;--ink:#f4eedd;--muted:#a9b2cc;--gold:#d0a84f;--on:#0e1731;--line:rgba(244,238,221,.15)}
+:root{--bg:#0e1731;--bg2:#16224a;--bg3:#1c2b5c;--ink:#f4eedd;--muted:#a9b2cc;--gold:#d0a84f;--gold2:#e5be65;--on:#0e1731;--line:rgba(244,238,221,.15);--line2:rgba(244,238,221,.28);--bad:#ff7b7b;--ok:#8fd19e}
 *{box-sizing:border-box;margin:0}
-body{background:var(--bg);color:var(--ink);font:400 17px/1.7 'Hanken Grotesk',system-ui,sans-serif}
-h1,h2,h3{font-family:'Instrument Serif',Georgia,serif;font-weight:400;line-height:1.15}
-a{color:var(--gold)}[hidden]{display:none!important}
-.wrap{width:min(860px,100% - 2rem);margin-inline:auto}
-header{border-bottom:1px solid var(--line);padding:1rem 0}header .wrap{display:flex;justify-content:space-between;align-items:center;gap:1rem}
-.brand{white-space:nowrap;font-family:'Instrument Serif',serif;font-size:1.4rem;text-decoration:none;color:var(--ink)}
-button,.btn{font:inherit;cursor:pointer;border-radius:999px;border:1px solid var(--line);background:none;color:var(--ink);padding:.4rem 1.1rem;text-decoration:none;display:inline-block}
-button:hover{border-color:var(--gold)}.pri{background:var(--gold);color:var(--on);border-color:var(--gold);font-weight:600;width:100%;border-radius:10px;padding:.7rem}
-input{font:inherit;background:var(--bg);color:var(--ink);border:1px solid var(--line);border-radius:10px;padding:.7rem .9rem;width:100%;margin:.3rem 0 1rem}
-label{font-size:.9rem;color:var(--muted)}
-:focus-visible{outline:2px solid var(--gold);outline-offset:3px}
-#login{min-height:80vh;display:grid;place-items:center;padding:1rem}
-#login form{background:var(--bg2);border:1px solid var(--line);border-radius:16px;padding:2rem;width:min(400px,100%)}
-.tabs{display:flex;flex-wrap:wrap;gap:.5rem;margin:1.6rem 0}
-.tabs button[aria-pressed=true]{background:var(--gold);color:var(--on);border-color:var(--gold)}
-.entry{border-top:1px solid var(--line);padding:1.6rem 0}
-.entry h3{font-size:1.7rem;margin-bottom:.2rem}
-.meta{color:var(--muted);font-size:.9rem;margin-bottom:.8rem}
-.entry p{margin-bottom:.9rem}
-.entry img{max-width:100%;border-radius:10px;border:1px solid var(--line);margin:.6rem 0}
-.banner{background:var(--bg2);border:1px solid var(--gold);border-radius:10px;padding:.8rem 1rem;margin-top:1.4rem}
-.err{color:#e88}.muted{color:var(--muted)}
+body{background:var(--bg);color:var(--ink);font:400 16px/1.7 'Hanken Grotesk',system-ui,sans-serif;-webkit-font-smoothing:antialiased}
+h1,h2,h3,h4{font-family:'Instrument Serif',Georgia,serif;font-weight:400;line-height:1.15}
+a{color:var(--gold);text-decoration:none}a:hover{text-decoration:underline}
+[hidden]{display:none!important}
+.wrap{width:min(920px,100% - 2.4rem);margin-inline:auto}
+
+header{background:var(--bg2);border-bottom:1px solid var(--line);padding:.85rem 0;position:sticky;top:0;z-index:30}
+header .wrap{display:flex;justify-content:space-between;align-items:center;gap:1rem}
+.brand-box{display:flex;align-items:baseline;gap:.6rem}
+.brand{font-family:'Instrument Serif',serif;font-size:1.45rem;color:var(--ink);text-decoration:none}
+.badge{font-size:.72rem;letter-spacing:.08em;text-transform:uppercase;color:var(--gold);font-weight:600}
+
+button,.btn{font:inherit;cursor:pointer;border-radius:8px;border:1px solid var(--line);background:var(--bg2);color:var(--ink);padding:.45rem 1rem;text-decoration:none;display:inline-flex;align-items:center;gap:.4rem;transition:border-color .2s,background .2s}
+button:hover,.btn:hover{border-color:var(--gold);text-decoration:none}
+.pri{background:var(--gold);color:var(--on);border-color:var(--gold);font-weight:600}
+.pri:hover{background:var(--gold2);border-color:var(--gold2)}
+.sm{padding:.25rem .6rem;font-size:.84rem;border-radius:6px}
+
+input{font:inherit;background:var(--bg);color:var(--ink);border:1px solid var(--line);border-radius:8px;padding:.65rem .85rem;width:100%;transition:border-color .2s}
+input:focus{outline:none;border-color:var(--gold);box-shadow:0 0 0 2px rgba(208,168,79,.2)}
+label{display:block;font-size:.88rem;color:var(--muted);margin-bottom:.8rem}
+label>input{margin-top:.3rem}
+
+#login{min-height:85vh;display:grid;place-items:center;padding:1.5rem}
+#login form{background:var(--bg2);border:1px solid var(--line);border-radius:16px;padding:2.2rem;width:min(420px,100%);box-shadow:0 24px 50px rgba(0,0,0,.45)}
+
+.hero{padding:2.4rem 0 1.6rem;border-bottom:1px solid var(--line)}
+.hero h1{font-size:clamp(2.2rem,5vw,3.4rem);margin-bottom:.6rem}
+.hero p{color:var(--muted);font-size:1.05rem;max-width:720px}
+
+.banner{background:rgba(208,168,79,.12);border:1px solid var(--gold);border-radius:10px;padding:.75rem 1.1rem;margin-top:1.2rem;font-size:.92rem;display:flex;justify-content:space-between;align-items:center;gap:1rem}
+
+.tabs{display:flex;flex-wrap:wrap;gap:.5rem;margin:1.8rem 0 2rem}
+.tabs button{border-radius:999px;font-size:.88rem;padding:.35rem .95rem}
+.tabs button[aria-pressed=true]{background:var(--gold);color:var(--on);border-color:var(--gold);font-weight:600}
+.tabs button .count{font-size:.78rem;opacity:.75;margin-left:.25rem}
+
+.entry-list{display:flex;flex-direction:column;gap:1.6rem;padding-bottom:4rem}
+.entry-card{background:var(--bg2);border:1px solid var(--line);border-radius:14px;padding:1.6rem;transition:border-color .2s}
+.entry-card:hover{border-color:var(--line2)}
+.entry-card h3{font-size:1.65rem;margin-bottom:.3rem}
+.meta-row{display:flex;flex-wrap:wrap;gap:.6rem;align-items:center;color:var(--muted);font-size:.85rem;margin-bottom:1rem}
+.pill{background:rgba(244,238,221,.08);border:1px solid var(--line);border-radius:999px;padding:.15rem .65rem;font-size:.75rem}
+.pill.gold{color:var(--gold);border-color:rgba(208,168,79,.3)}
+.entry-body{color:var(--ink);margin:1rem 0}
+.entry-body p{margin-bottom:.8rem}
+
+.gallery-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:.8rem;margin:1rem 0}
+.gallery-grid img{width:100%;height:150px;object-fit:cover;border-radius:8px;border:1px solid var(--line);cursor:pointer;transition:transform .2s,border-color .2s}
+.gallery-grid img:hover{transform:scale(1.02);border-color:var(--gold)}
+
+.file-box{background:var(--bg);border:1px solid var(--line);border-radius:10px;padding:1rem;display:flex;align-items:center;justify-content:space-between;gap:1rem;margin-top:1rem}
+.file-box .f-icon{font-size:1.8rem}
+.file-box .f-info{flex:1;min-width:0}
+.file-box .f-title{font-weight:600;font-size:.95rem;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.file-box .f-sub{font-size:.82rem;color:var(--muted)}
+
+dialog{background:var(--bg2);color:var(--ink);border:1px solid var(--line);border-radius:14px;padding:1.4rem;max-width:90vw;margin:auto}
+dialog::backdrop{background:rgba(0,0,0,.75);backdrop-filter:blur(4px)}
+.lb-img{max-width:100%;max-height:80vh;object-fit:contain;border-radius:8px;display:block;margin:auto}
+
+.err{color:var(--bad);font-size:.88rem}
+.empty-msg{padding:4rem 0;text-align:center;color:var(--muted)}
 </style>
 </head>
 <body>
-<header><div class="wrap"><a class="brand" href="/">Burhanuddin Malik</a><span><span id="who" class="muted"></span> <button id="out" hidden>Sign out</button></span></div></header>
+
+<header>
+ <div class="wrap">
+  <div class="brand-box">
+   <a class="brand" href="/">Burhanuddin Malik</a>
+   <span class="badge">Private Archive</span>
+  </div>
+  <div style="display:flex;align-items:center;gap:.8rem">
+   <span id="who" style="font-size:.85rem;color:var(--muted)"></span>
+   <button id="out" class="sm" hidden>Sign out</button>
+  </div>
+ </div>
+</header>
+
 <div id="login" hidden>
- <form id="lf"><h1 style="font-size:2rem;margin-bottom:.3rem">Private Portal</h1><p class="muted" style="margin-bottom:1.2rem;font-size:.95rem">Enter the password you were given.</p>
-  <div id="urow" hidden><label for="u">Username</label><input id="u" name="username" autocomplete="username"></div>
-  <label for="p">Password</label><input id="p" name="password" type="password" autocomplete="current-password" required>
-  <button class="pri">Open</button><p id="err" class="err" role="alert" style="margin-top:.8rem"></p>
-  <p style="margin-top:1rem;font-size:.9rem"><a href="#" id="tg">I have a personal username</a></p></form>
+ <form id="lf">
+  <h1 style="font-size:2.1rem;margin-bottom:.3rem">Private Archive</h1>
+  <p style="color:var(--muted);font-size:.92rem;margin-bottom:1.4rem">Enter the archive password or your assigned credentials to proceed.</p>
+  
+  <div id="urow" hidden>
+   <label for="u">Username</label>
+   <input id="u" name="username" autocomplete="username">
+  </div>
+
+  <label for="p">Archive Password</label>
+  <input id="p" name="password" type="password" autocomplete="current-password" required placeholder="Enter password...">
+
+  <button class="pri" style="width:100%;justify-content:center;padding:.65rem">Unlock Archive</button>
+  <p id="err" class="err" role="alert" style="margin-top:.8rem"></p>
+
+  <p style="margin-top:1.2rem;font-size:.88rem;text-align:center">
+   <a href="#" id="tg">I have an individual username</a>
+  </p>
+ </form>
 </div>
+
+<div id="maint" hidden class="wrap" style="padding:6rem 0;text-align:center">
+ <h1 style="font-size:2.8rem;margin-bottom:1rem">Archive Temporarily Offline</h1>
+ <p style="color:var(--muted);font-size:1.1rem;max-width:540px;margin:0 auto 2rem">
+  The Private Archive is currently in maintenance mode or disabled by the owner. Please check back later.
+ </p>
+ <a class="btn" href="/">Return to Public Website</a>
+</div>
+
 <main class="wrap" id="main" hidden>
  <div id="banner"></div>
- <div class="tabs" id="tabs" role="group" aria-label="Sections"></div>
- <div id="list"></div>
+ <section class="hero">
+  <h1 id="arch_title">Private Archive</h1>
+  <p id="arch_welcome"></p>
+ </section>
+
+ <div class="tabs" id="tabs" role="group" aria-label="Archive Sections"></div>
+ <div id="list" class="entry-list"></div>
 </main>
+
+<dialog id="lbdlg">
+ <div style="display:flex;justify-content:flex-end;margin-bottom:.5rem">
+  <button class="sm" onclick="$('#lbdlg').close()">✕ Close</button>
+ </div>
+ <img id="lbimg" class="lb-img" src="" alt="Full view">
+ <p id="lbcap" style="text-align:center;margin-top:.8rem;color:var(--muted);font-size:.9rem"></p>
+</dialog>
+
 <script>
 "use strict";
-const $=s=>document.querySelector(s);
+const $=s=>document.querySelector(s),$$=s=>[...document.querySelectorAll(s)];
 const esc=s=>String(s??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
 const safe=u=>/^\/(?!\/)/.test(u||"")?u:"";
-const q=new URLSearchParams(location.search),PV=[];
+
+const q=new URLSearchParams(location.search);
+const PV=[];
 if(q.get("as"))PV.push("as_level="+encodeURIComponent(q.get("as")));
+if(q.get("as_level"))PV.push("as_level="+encodeURIComponent(q.get("as_level")));
 if(q.get("as_user"))PV.push("as_user="+encodeURIComponent(q.get("as_user")));
-let CSRF="",cur="",D=null;
-async function me(){const r=await fetch("/api/me");return r.json()}
-function showLogin(){$("#login").hidden=false;$("#main").hidden=true;$("#out").hidden=true;$("#who").textContent=""}
+if(q.get("as_pass"))PV.push("as_pass="+encodeURIComponent(q.get("as_pass")));
+
+let CSRF="",cur="all",D=null;
+
+async function me(){
+ try{const r=await fetch("/api/me");return await r.json()}catch(_){return {}}
+}
+
+function showLogin(){
+ $("#login").hidden=false;$("#main").hidden=true;$("#maint").hidden=true;
+ $("#out").hidden=true;$("#who").textContent="";
+}
+
 let useUser=false;
-$("#tg").onclick=e=>{e.preventDefault();useUser=!useUser;$("#urow").hidden=!useUser;$("#u").required=useUser;$("#tg").textContent=useUser?"I only have a password":"I have a personal username";(useUser?$("#u"):$("#p")).focus()};
-$("#lf").onsubmit=async e=>{e.preventDefault();$("#err").textContent="";
- const body=Object.fromEntries(new FormData(e.target));if(!useUser)delete body.username;
- const r=await fetch(useUser?"/api/login":"/api/private/unlock",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(body)});
- const j=await r.json().catch(()=>({}));
- if(!r.ok){$("#err").textContent=j.error||"Sign-in failed.";return}
- if(j.role==="owner"&&!PV.length){location.href="/admin";return}
- CSRF=j.csrf||"";load()};
-$("#out").onclick=async()=>{await fetch("/api/logout",{method:"POST",headers:{"X-CSRF":CSRF}});location.href="/private"};
+$("#tg").onclick=e=>{
+ e.preventDefault();useUser=!useUser;
+ $("#urow").hidden=!useUser;$("#u").required=useUser;
+ $("#tg").textContent=useUser?"I only have an archive password":"I have an individual username";
+ (useUser?$("#u"):$("#p")).focus();
+};
+
+$("#lf").onsubmit=async e=>{
+ e.preventDefault();$("#err").textContent="";
+ const body=Object.fromEntries(new FormData(e.target));
+ if(!useUser)delete body.username;
+ try{
+  const r=await fetch(useUser?"/api/login":"/api/private/unlock",{
+   method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(body)
+  });
+  const j=await r.json().catch(()=>({}));
+  if(!r.ok){
+   $("#err").textContent=j.error||"Access denied.";
+   return;
+  }
+  if(j.role==="owner"&&!PV.length){
+   location.href="/admin";
+   return;
+  }
+  CSRF=j.csrf||"";
+  load();
+ }catch(err){
+  $("#err").textContent="Connection error. Please try again.";
+ }
+};
+
+$("#out").onclick=async()=>{
+ await fetch("/api/logout",{method:"POST",headers:{"X-CSRF":CSRF}}).catch(()=>{});
+ location.href="/archive";
+};
+
 async function load(){
  const r=await fetch("/api/private/items"+(PV.length?"?"+PV.join("&"):""));
  if(r.status===401){showLogin();return}
- D=await r.json();$("#login").hidden=true;$("#main").hidden=false;$("#out").hidden=false;$("#who").textContent=D.name;
- $("#banner").innerHTML=PV.length&&D.owner?`<div class="banner">Previewing as <b>${esc(D.label)}</b>. This is exactly what that viewer sees. It is read-only. <a href="/admin">Back to dashboard</a></div>`:D.owner?`<div class="banner">Signed in as owner. <a href="/admin">Open dashboard</a></div>`:"";
- cur=D.sections[0]?.key||"";draw()}
+ if(r.status===403){
+  const j=await r.json().catch(()=>({}));
+  $("#login").hidden=true;$("#main").hidden=true;$("#maint").hidden=false;
+  return;
+ }
+ D=await r.json();
+ $("#login").hidden=true;$("#maint").hidden=true;$("#main").hidden=false;$("#out").hidden=false;
+ $("#who").textContent=D.name;
+
+ $("#arch_title").textContent=D.title||"Private Archive";
+ $("#arch_welcome").textContent=D.welcome||"";
+ document.title=(D.title||"Private Archive")+" | Burhanuddin Malik";
+
+ if(PV.length&&D.owner){
+  $("#banner").innerHTML=`<div class="banner"><span>Previewing as <b>${esc(D.label)}</b> (Read-Only Mode)</span><a class="btn sm" href="/admin">Return to Admin</a></div>`;
+ }else if(D.owner){
+  $("#banner").innerHTML=`<div class="banner"><span>Signed in with Owner Privileges (All Sections Visible)</span><a class="btn sm" href="/admin">Open Admin Portal</a></div>`;
+ }else{
+  $("#banner").innerHTML="";
+ }
+
+ cur="all";
+ draw();
+}
+
 function draw(){
- $("#tabs").innerHTML=D.sections.map(s=>`<button aria-pressed="${s.key===cur}" data-k="${s.key}">${esc(s.label)}</button>`).join("");
- const items=D.items.filter(i=>i.kind===cur);
- $("#list").innerHTML=D.sections.length?(items.length?items.map(entry).join(""):`<p class="muted">Nothing in this section yet.</p>`):`<p class="muted" style="margin-top:2rem">There's nothing shared with you yet.</p>`}
+ const secMap={all:"All Material"};
+ D.sections.forEach(s=>secMap[s.key]=s.label);
+
+ const secKeys=["all",...D.sections.map(s=>s.key)];
+ $("#tabs").innerHTML=secKeys.map(k=>{
+  const count=k==="all"?D.items.length:D.items.filter(i=>i.kind===k).length;
+  return `<button type="button" aria-pressed="${k===cur}" data-k="${k}">${esc(secMap[k])} <span class="count">${count}</span></button>`;
+ }).join("");
+
+ const items=cur==="all"?D.items:D.items.filter(i=>i.kind===cur);
+ $("#list").innerHTML=items.length?items.map(entryHTML).join(""):`<div class="empty-msg"><p>No items found in this category.</p></div>`;
+
+ $$("[data-pimg]").forEach(img=>{
+  img.onclick=()=>{
+   $("#lbimg").src=img.dataset.pimg;
+   $("#lbcap").textContent=img.alt||"";
+   $("#lbdlg").showModal();
+  };
+ });
+}
+
 const paras=t=>String(t||"").split(/\n{2,}/).filter(Boolean).map(x=>`<p>${esc(x).replace(/\n/g,"<br>")}</p>`).join("");
-function entry(i){const d=i.data,when=d.date||d.year||"";
- const body=d.text||d.details||"";
- return `<article class="entry"><h3>${esc(i.title)}</h3><div class="meta">${esc(when)}${d.from?` · ${esc(d.from)}`:""}${i.status==="draft"?" · draft":""}</div>${paras(body)}
- ${d.project&&/^[a-z0-9-]+$/.test(d.project)?`<p class="muted">Related public page: <a href="/work/${esc(d.project)}">${esc(d.project)}</a></p>`:""}
- ${(Array.isArray(d.images)?d.images:[]).filter(safe).map(u=>`<img src="${esc(safe(u))}" alt="" loading="lazy">`).join("")}
- ${safe(d.image)?`<img src="${esc(safe(d.image))}" alt="${esc(i.title)}" loading="lazy">`:""}${safe(d.file)?`<p><a class="btn" href="${esc(safe(d.file))}">Open file</a></p>`:""}</article>`}
-document.addEventListener("click",e=>{const b=e.target.closest("[data-k]");if(b){cur=b.dataset.k;draw()}});
-(async()=>{const m=await me();if(m.role){CSRF=m.csrf;if(m.role==="owner"&&!PV.length){location.href="/admin";return}load()}else showLogin()})();
+
+function entryHTML(i){
+ const d=i.data||{};
+ const when=d.date||d.year||"";
+ const body=d.text||d.details||d.story||d.caption||"";
+ const images=(Array.isArray(d.images)?d.images:[d.image]).filter(Boolean);
+ const hasFile=d.file&&safe(d.file);
+ const canDownload=Boolean(d.allow_download);
+
+ return `
+ <article class="entry-card">
+  <div class="meta-row">
+   ${when?`<span>${esc(when)}</span>`:""}
+   ${d.from?`<span>From: <b>${esc(d.from)}</b></span>`:""}
+   <span class="pill gold">${esc(i.kind)}</span>
+   ${i.status==="draft"?`<span class="pill">Draft</span>`:""}
+  </div>
+  <h3>${esc(i.title)}</h3>
+  ${body?`<div class="entry-body">${paras(body)}</div>`:""}
+
+  ${images.length?`
+   <div class="gallery-grid">
+    ${images.map((u,idx)=>`<img src="${esc(safe(u))}" alt="${esc(i.title)} image ${idx+1}" data-pimg="${esc(safe(u))}" loading="lazy">`).join("")}
+   </div>
+  `:""}
+
+  ${hasFile?`
+   <div class="file-box">
+    <div class="f-icon">📄</div>
+    <div class="f-info">
+     <div class="f-title">${esc(i.title)}</div>
+     <div class="f-sub">${canDownload?"Document available to view and download":"View-only protected document"}</div>
+    </div>
+    <a class="btn ${canDownload?'pri':''} sm" href="${esc(safe(d.file))}${canDownload?'?dl=1':''}" target="_blank" rel="noopener">
+     ${canDownload?"⬇ Download Document":"👁 View Document"}
+    </a>
+   </div>
+  `:""}
+
+  ${d.project&&/^[a-z0-9-]+$/.test(d.project)?`
+   <p style="margin-top:1rem;font-size:.85rem;color:var(--muted)">Related Project: <a href="/work/${esc(d.project)}" target="_blank">${esc(d.project)} →</a></p>
+  `:""}
+ </article>
+ `;
+}
+
+document.addEventListener("click",e=>{
+ const b=e.target.closest("[data-k]");
+ if(b){cur=b.dataset.k;draw()}
+});
+
+(async()=>{
+ const m=await me();
+ if(m.role){
+  CSRF=m.csrf;
+  if(m.role==="owner"&&!PV.length){
+   // If owner arrived at /archive or /private without preview flags, let them view their full archive
+  }
+  load();
+ }else{
+  showLogin();
+ }
+})();
 </script>
 </body>
 </html>
