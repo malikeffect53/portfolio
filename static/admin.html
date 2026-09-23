@@ -970,12 +970,61 @@ const ACT={};
 VIEWS.overview=async()=>{
  const o=await api("/api/admin/overview");
 
- const archStatusMap={
-  enabled:{label:"Archive Enabled",cls:"ok",dot:"🟢"},
-  maintenance:{label:"Archive Maintenance",cls:"warn",dot:"🟡"},
-  disabled:{label:"Archive Disabled",cls:"bad",dot:"🔴"}
- };
- const archInfo=archStatusMap[o.archive_status]||archStatusMap.enabled;
+ const siteStatus = (o.site_status || "live").toLowerCase();
+ const archStatus = (o.archive_status || "enabled").toLowerCase();
+ let archInfo = { label: "Enabled", cls: "ok", dot: "🟢" };
+ if (archStatus === "disabled") {
+  archInfo = { label: "Locked", cls: "bad", dot: "🔒" };
+ } else if (archStatus === "maintenance") {
+  archInfo = { label: "Locked (Maintenance)", cls: "warn", dot: "🟡" };
+ }
+
+ const checklistItems = [
+  {
+   title: "Add a profile photo",
+   done: !!o.has_profile_photo,
+   doneText: "Profile photo uploaded and active",
+   pendingText: "Upload your hero and about profile photos",
+   href: "#/home"
+  },
+  {
+   title: "Add the first artwork",
+   done: (o.artworks || 0) > 0,
+   doneText: `${o.artworks} visual artworks added`,
+   pendingText: "Upload your first artwork or calligraphy piece",
+   href: "#/list/gallery"
+  },
+  {
+   title: "Publish the first real blog post",
+   done: (o.real_posts || 0) > 0,
+   doneText: `${o.real_posts} real article${o.real_posts === 1 ? '' : 's'} published`,
+   pendingText: "Write and publish your first full article",
+   href: "#/list/post"
+  },
+  {
+   title: 'Replace "coming soon" placeholder posts',
+   done: (o.placeholder_posts || 0) === 0,
+   doneText: "All placeholder posts replaced with content",
+   pendingText: `${o.placeholder_posts} placeholder post${o.placeholder_posts === 1 ? '' : 's'} remaining`,
+   href: "#/list/post"
+  },
+  {
+   title: "Set up the contact form",
+   done: !!o.has_contact_setup,
+   doneText: "Contact channels &amp; links configured",
+   pendingText: "Add contact email, WhatsApp and social links",
+   href: "#/contact"
+  },
+  {
+   title: "Review the private archive settings",
+   done: !!o.archive_reviewed,
+   doneText: "Private archive configured &amp; secured",
+   pendingText: "Review access levels, password and security",
+   href: "#/archive"
+  }
+ ];
+
+ const completedCount = checklistItems.filter(item => item.done).length;
 
  $("#view").innerHTML=`
  <div class="row" style="justify-content:space-between;align-items:flex-start;margin-bottom:1.2rem">
@@ -987,14 +1036,24 @@ VIEWS.overview=async()=>{
 
  <!-- Status Chips -->
  <div class="status-chips">
-  <a class="chip ok" href="/?preview=1" target="_blank" title="Open live public website">
-   <span>🟢</span> <span>Website: Live &amp; Public</span>
+  <a class="chip ${siteStatus === 'maintenance' ? 'warn' : 'ok'}" href="#/settings" title="Site status is currently ${siteStatus === 'maintenance' ? 'Maintenance mode' : 'Live & Public'}">
+   <span>${siteStatus === 'maintenance' ? '🟡' : '🟢'}</span>
+   <span>Site: ${siteStatus === 'maintenance' ? 'Maintenance' : 'Live'}</span>
   </a>
-  <a class="chip ${archInfo.cls}" href="#/archive" title="Configure Private Archive">
-   <span>${archInfo.dot}</span> <span>${archInfo.label}</span>
+
+  <a class="chip ${archInfo.cls}" href="#/archive" title="Private Archive is ${archInfo.label}">
+   <span>${archInfo.dot}</span>
+   <span>Private Archive: ${archInfo.label}</span>
   </a>
-  <a class="chip ${o.last_backup?'ok':'warn'}" href="#/backups" title="${o.last_backup?fullIST(o.last_backup.ts):'No backup yet'}">
-   <span>💾</span> <span>Last Backup: ${o.last_backup?timeAgo(o.last_backup.ts):'Not performed yet'}</span>
+
+  <a class="chip ${o.last_backup ? 'ok' : 'warn'}" href="#/backups" title="${o.last_backup ? fullIST(o.last_backup.ts) : 'No backup created yet'}">
+   <span>💾</span>
+   <span>Last Backup: ${o.last_backup ? timeAgo(o.last_backup.ts) : 'None yet'}</span>
+  </a>
+
+  <a class="chip ${o.unread > 0 ? 'warn' : 'ok'}" href="#/messages" title="${o.unread} unread inquiry messages">
+   <span>✉️</span>
+   <span>${o.unread > 0 ? (o.unread + ' Unread ' + (o.unread === 1 ? 'Message' : 'Messages')) : '0 Unread Messages'}</span>
   </a>
  </div>
 
@@ -1019,9 +1078,9 @@ VIEWS.overview=async()=>{
   </a>
 
   <a href="#/list/journey" class="stat-card" title="Manage Journey Milestones">
-   <div class="num"><span>${o.milestones||0}</span> <span style="font-size:1.3rem">🧭</span></div>
+   <div class="num"><span>${o.milestones || 0}</span> <span style="font-size:1.3rem">🧭</span></div>
    <div class="label">Journey Timeline</div>
-   <div class="sub">${(o.milestones||0) > 0 ? (o.milestones + ' milestones documented') : 'No milestones yet. Document your path.'}</div>
+   <div class="sub">${(o.milestones || 0) > 0 ? (o.milestones + ' milestones documented') : 'No milestones yet. Document your path.'}</div>
   </a>
 
   <a href="#/list/achievement" class="stat-card" title="Manage Achievements">
@@ -1031,9 +1090,9 @@ VIEWS.overview=async()=>{
   </a>
 
   <a href="#/media" class="stat-card" title="Manage Media Assets">
-   <div class="num"><span>${o.media||0}</span> <span style="font-size:1.3rem">🖼️</span></div>
+   <div class="num"><span>${o.media || 0}</span> <span style="font-size:1.3rem">🖼️</span></div>
    <div class="label">Media Assets</div>
-   <div class="sub">${(o.media||0) > 0 ? (o.media + ' media files stored') : 'No media yet. Upload your assets.'}</div>
+   <div class="sub">${(o.media || 0) > 0 ? (o.media + ' media files stored') : 'No media yet. Upload your assets.'}</div>
   </a>
 
   <a href="#/messages" class="stat-card" title="View Inquiries &amp; Messages">
@@ -1051,53 +1110,23 @@ VIEWS.overview=async()=>{
 
  <!-- Site Setup Checklist -->
  <div class="card" style="margin-bottom:1.5rem">
-  <div class="row" style="justify-content:space-between;align-items:center;margin-bottom:.4rem">
-   <h3 style="margin:0">Site Setup Checklist</h3>
-   <span style="font-size:12.5px;color:var(--muted)">Key portfolio pillars &amp; configuration</span>
+  <div class="row" style="justify-content:space-between;align-items:center;margin-bottom:.6rem">
+   <div>
+    <h3 style="margin:0">Site Setup</h3>
+    <span style="font-size:12.5px;color:var(--muted)">Portfolio launch readiness &amp; configuration checklist</span>
+   </div>
+   <span class="pill sm ${completedCount === 6 ? 'ok' : 'warn'}">${completedCount} of 6 complete</span>
   </div>
   <div class="checklist-grid">
-   <a class="check-item" href="#/home">
-    <div class="check-icon done">✓</div>
-    <div class="check-text">
-     <b>Hero &amp; Profile Setup</b>
-     <span>Name, bio intro, and profile photos configured.</span>
-    </div>
-   </a>
-   <a class="check-item" href="#/list/project">
-    <div class="check-icon ${o.projects>0?'done':'todo'}">${o.projects>0?'✓':'○'}</div>
-    <div class="check-text">
-     <b>Case Studies &amp; Projects</b>
-     <span>${o.projects>0?o.projects+' published projects live':'Add your featured portfolio case studies'}</span>
-    </div>
-   </a>
-   <a class="check-item" href="#/list/gallery">
-    <div class="check-icon ${o.artworks>0?'done':'todo'}">${o.artworks>0?'✓':'○'}</div>
-    <div class="check-text">
-     <b>Visual Artworks &amp; Khat</b>
-     <span>${o.artworks>0?o.artworks+' showcase pieces uploaded':'Upload creative and calligraphy artworks'}</span>
-    </div>
-   </a>
-   <a class="check-item" href="#/list/post">
-    <div class="check-icon ${o.posts>0?'done':'todo'}">${o.posts>0?'✓':'○'}</div>
-    <div class="check-text">
-     <b>Blog Articles &amp; Insights</b>
-     <span>${o.posts>0?o.posts+' articles published ('+o.drafts+' drafts)':'Draft articles on craft, design & philosophy'}</span>
-    </div>
-   </a>
-   <a class="check-item" href="#/archive">
-    <div class="check-icon done">✓</div>
-    <div class="check-text">
-     <b>Private Archive Protection</b>
-     <span>Protected behind primary password &amp; viewer accounts.</span>
-    </div>
-   </a>
-   <a class="check-item" href="#/backups">
-    <div class="check-icon ${o.last_backup?'done':'todo'}">${o.last_backup?'✓':'○'}</div>
-    <div class="check-text">
-     <b>Data Protection &amp; Backups</b>
-     <span>${o.last_backup?'Automated snapshot active':'Generate your first full system backup'}</span>
-    </div>
-   </a>
+   ${checklistItems.map(item => `
+    <a class="check-item" href="${item.href}">
+     <div class="check-icon ${item.done ? 'done' : 'todo'}">${item.done ? '✓' : '○'}</div>
+     <div class="check-text">
+      <b>${esc(item.title)}</b>
+      <span>${item.doneText && item.done ? esc(item.doneText) : esc(item.pendingText)}</span>
+     </div>
+    </a>
+   `).join("")}
   </div>
  </div>
 

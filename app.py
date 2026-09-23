@@ -1277,6 +1277,21 @@ def passcodes_delete(i):
 def overview():
     def n(sql, *a):
         return db().execute(sql, a).fetchone()[0]
+
+    posts_rows = db().execute("SELECT data, status FROM items WHERE kind='post'").fetchall()
+    real_posts = 0
+    placeholder_posts = 0
+    for r in posts_rows:
+        try:
+            d = json.loads(r[0] or '{}')
+        except Exception:
+            d = {}
+        is_placeholder = bool(d.get('soon')) or not d.get('body', '').strip()
+        if is_placeholder:
+            placeholder_posts += 1
+        elif r[1] == 'published':
+            real_posts += 1
+
     return jsonify(
         projects=n("SELECT COUNT(*) FROM items WHERE kind='project'"),
         artworks=n("SELECT COUNT(*) FROM items WHERE kind IN ('gallery','artwork')"),
@@ -1288,6 +1303,12 @@ def overview():
         media=n("SELECT COUNT(*) FROM media"),
         posts=n("SELECT COUNT(*) FROM items WHERE kind='post' AND status='published'"),
         drafts=n("SELECT COUNT(*) FROM items WHERE kind='post' AND status!='published'"),
+        real_posts=real_posts,
+        placeholder_posts=placeholder_posts,
+        has_profile_photo=bool(setting("hero_photo") or setting("about_photo")),
+        has_contact_setup=bool(setting("email") or setting("whatsapp") or setting("linkedin")),
+        archive_reviewed=bool(setting("archive_password_hash") or setting("archive_status")),
+        site_status=setting("site_status", "live"),
         unread=n("SELECT COUNT(*) FROM contacts WHERE read=0"),
         viewers=n("SELECT COUNT(*) FROM users WHERE role!='owner'"),
         recent=qa("SELECT * FROM activity WHERE area IN ('portfolio','blog','content','items','settings','backup') ORDER BY id DESC LIMIT 40"),
