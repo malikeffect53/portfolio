@@ -250,7 +250,7 @@ def rl_add(key):
     _rl.setdefault(key, []).append(time.time())
 
 
-OPEN_POST = {"/api/login", "/api/track", "/api/contact", "/api/feedback", "/api/private/unlock"}
+OPEN_POST = {"/api/login", "/api/logout", "/api/track", "/api/contact", "/api/feedback", "/api/private/unlock"}
 
 
 @app.before_request
@@ -278,14 +278,32 @@ def _bad(e):
     return jsonify(error=str(e)), 400
 
 
+@app.errorhandler(401)
+def _401(e):
+    return jsonify(error="Authentication required."), 401
+
+
 @app.errorhandler(403)
 def _403(e):
     return jsonify(error="Not allowed. Refresh the page and try again."), 403
 
 
+@app.errorhandler(404)
+def _404(e):
+    if request.path.startswith("/api/"):
+        return jsonify(error="Endpoint not found."), 404
+    return html("index.html"), 404
+
+
 @app.errorhandler(413)
 def _413(e):
     return jsonify(error="That file is too large (25 MB maximum)."), 413
+
+
+@app.errorhandler(500)
+def _500(e):
+    return jsonify(error="An internal server error occurred. Please try again later."), 500
+
 
 
 @app.post("/api/login")
@@ -294,13 +312,15 @@ def login():
     un = str(j.get("username", "")).strip().lower()[:60]
     pw = str(j.get("password", ""))[:200]
     key = f"login:{request.remote_addr}:{un}"
-    if rl_over(key, 6, 900):
+    key_ip = f"login_ip:{request.remote_addr}"
+    if rl_over(key, 6, 900) or rl_over(key_ip, 25, 900):
         log("Sign-in blocked after too many attempts", un, "security", actor="security")
         return jsonify(error="Too many attempts. Please wait 15 minutes and try again."), 429
     u = q1("SELECT * FROM users WHERE username=? AND active=1", un)
     ok = check_password_hash(u["pw"] if u else DUMMY, pw) and bool(u)
     if not ok:
         rl_add(key)
+        rl_add(key_ip)
         log("Failed sign-in", un, "security", actor="security")
         return jsonify(error="Wrong username or password."), 401
     session.clear()
@@ -333,7 +353,11 @@ def whoami():
 @owner_only
 def change_password():
     j = request.get_json(silent=True) or {}
+    key = f"admin_pw:{me()['id']}"
+    if rl_over(key, 5, 900):
+        return jsonify(error="Too many failed attempts. Please wait 15 minutes and try again."), 429
     if not check_password_hash(me()["pw"], str(j.get("current", ""))):
+        rl_add(key)
         raise ValueError("Current password is wrong.")
     new = str(j.get("new", ""))
     if len(new) < 10:
@@ -1015,6 +1039,9 @@ def private_file(name):
     u = me() or passcode_user()
     if not u:
         abort(401)
+    arch_status = setting("archive_status", "enabled")
+    if arch_status in ("disabled", "maintenance") and u.get("role") != "owner":
+        abort(403)
     if not NAME_RE.match(name) or not os.path.exists(os.path.join(UP_PRIV, name)):
         abort(404)
     rank, sections, full, _ = viewer_ctx(u)
