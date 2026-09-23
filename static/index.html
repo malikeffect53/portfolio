@@ -258,9 +258,31 @@ const EYE={"iris-a":"The left half of the iris stands for divine serenity.","iri
 let C={projects:[],gallery:[],journey:[],achievements:[],posts:[],settings:{}};
 
 /* ---------- theme ---------- */
-function setTheme(id){document.documentElement.dataset.theme=id;store.set("theme",id);$$("#tpop button").forEach(b=>b.setAttribute("aria-pressed",b.dataset.t===id));const m=$('meta[name=theme-color]');if(m)m.content=getComputedStyle(document.documentElement).getPropertyValue("--bg").trim()}
-$("#tpop").innerHTML=THEMES.map(t=>`<button data-t="${t[0]}"><span class="sw" style="background:${t[2]}"></span>${t[1]}</button>`).join("");
+function activeThemes(){
+ try {
+  const en = C.settings && C.settings.theme_enabled ? (typeof C.settings.theme_enabled==="string"?JSON.parse(C.settings.theme_enabled):C.settings.theme_enabled) : null;
+  if(Array.isArray(en)&&en.length) {
+   const filtered = THEMES.filter(t=>en.includes(t[0]));
+   if(filtered.length) return filtered;
+  }
+ } catch(e){}
+ return THEMES;
+}
+function drawThemes(){
+ const at = activeThemes();
+ $("#tpop").innerHTML=at.map(t=>`<button data-t="${t[0]}"><span class="sw" style="background:${t[2]}"></span>${t[1]}</button>`).join("");
+}
+function setTheme(id){
+ const at = activeThemes();
+ if(!at.some(t=>t[0]===id)) id = at[0] ? at[0][0] : "night";
+ document.documentElement.dataset.theme=id;
+ store.set("theme",id);
+ $$("#tpop button").forEach(b=>b.setAttribute("aria-pressed",b.dataset.t===id));
+ const m=$('meta[name=theme-color]');
+ if(m)m.content=getComputedStyle(document.documentElement).getPropertyValue("--bg").trim();
+}
 $("#tpop").addEventListener("click",e=>{const b=e.target.closest("button");if(b){setTheme(b.dataset.t);$("#themes").open=false}});
+drawThemes();
 setTheme(THEMES.some(t=>t[0]===store.get("theme"))?store.get("theme"):"night");
 $("#yr").textContent=new Date().getFullYear();
 const NAV=[["Home","/"],["About","/about"],["Journey","/journey"],["Work","/work"],["Blog","/blog"],["Contact","/contact"]];
@@ -289,7 +311,26 @@ const paras=t=>String(t||"").split(/\n{2,}/).map(x=>`<p>${rich(x).replace(/\n/g,
 function md(t){return String(t||"").split(/\n{2,}/).map(p=>/^## /.test(p)?`<h2>${esc(p.slice(3))}</h2>`:`<p>${rich(p).replace(/\*\*(.+?)\*\*/g,"<strong>$1</strong>").replace(/\n/g,"<br>")}</p>`).join("")}
 const projCard=p=>A("/work/"+p.slug,`${pic(p.cover,p.title)}<h3>${esc(p.title)}</h3>${meta(p)}<p>${esc(p.short)}</p><span class="link">View case study</span>`,"card");
 const chips=(list,cur,attr)=>`<div class="chips">${list.map(c=>`<button class="chip" ${attr}="${esc(c)}" aria-pressed="${c===cur}">${esc(c)}</button>`).join("")}</div>`;
-const socials=()=>{const s=C.settings;return [["Instagram",s.instagram],["WhatsApp",s.whatsapp],["Gmail",s.email&&"mailto:"+s.email]].filter(x=>safeUrl(x[1])).map(x=>`<a class="link" href="${esc(x[1])}" target="_blank" rel="noopener">${x[0]}</a>`).join(" &nbsp; ")};
+const socials=()=>{
+ const s = C.settings || {};
+ const list = [
+   ["Instagram", s.instagram],
+   ["WhatsApp", s.whatsapp],
+   ["Gmail", s.email && "mailto:" + s.email],
+   ["LinkedIn", s.linkedin],
+   ["GitHub", s.github],
+   ["Twitter", s.twitter]
+ ];
+ if (s.contact_other_links) {
+  try {
+   const others = typeof s.contact_other_links==="string" ? JSON.parse(s.contact_other_links) : s.contact_other_links;
+   if (Array.isArray(others)) {
+    others.forEach(o => { if (o && o.label && o.url) list.push([o.label, o.url]); });
+   }
+  } catch(e){}
+ }
+ return list.filter(x => safeUrl(x[1])).map(x => `<a class="link" href="${esc(x[1])}" target="_blank" rel="noopener">${esc(x[0])}</a>`).join(" &nbsp;·&nbsp; ");
+};
 const person=`<svg viewBox="0 0 100 100" aria-hidden="true"><circle cx="50" cy="36" r="18" fill="none" stroke="currentColor" stroke-width="2"/><path d="M14 92c4-24 20-34 36-34s32 10 36 34" fill="none" stroke="currentColor" stroke-width="2"/></svg>`;
 const archBox=(src,label)=>`<div class="arch"><div class="in">${safeUrl(src)?`<img src="${esc(safeUrl(src))}" alt="${esc(label)}">`:`<div>${person}<div>${esc(label)}</div></div>`}</div></div>`;
 const fmtDate=s=>{try{return new Date(s).toLocaleDateString(undefined,{year:"numeric",month:"long",day:"numeric"})}catch(e){return s||""}};
@@ -306,55 +347,101 @@ addEventListener("pagehide",sendTime);
 
 /* ---------- views ---------- */
 const V={};
-V.home=()=>{const feat=C.projects.filter(p=>p.featured).slice(0,4),posts=C.posts.slice(0,3);return `
+V.home=()=>{
+ const s = C.settings || {};
+ const name = s.home_name || "Burhanuddin Malik";
+ const tagline = s.home_tagline || "Creating with Purpose. Exploring with Curiosity. Growing with Every Journey.";
+ const intro = s.home_intro || "I’m Burhanuddin Malik — a creative learner and curious explorer with a growing interest in art, communication, technology, and entrepreneurship. This portfolio brings together the work, experiences, and ideas that continue to shape my journey.";
+ const btn1L = s.home_btn1_label || "Explore My Work";
+ const btn1U = s.home_btn1_link || "/work";
+ const btn2L = s.home_btn2_label || "Explore My Journey";
+ const btn2U = s.home_btn2_link || "/journey";
+ const featTitle = s.home_feat_title || "Featured work";
+ const bandTitle = s.home_band_title || "Explore my journey";
+ const bandText = s.home_band_text || "From Mumbai and Indore to Aljamea, from a first sketch to large-scale paintings, and now business and technology. Each chapter has its own story.";
+ const quote = s.home_quote || "A journey shaped by curiosity, creativity, and continuous learning.";
+ const quoteBody = s.home_quote_body || "I used to be shy and reserved. Time at Aljamea helped me grow comfortable with crowds, communication, questions and responsibility. Today art, calligraphy, technology and business all shape how I learn.";
+ const blogTitle = s.home_blog_title || "Latest articles";
+ const contactTitle = s.home_contact_title || "Let’s talk about art, ideas, or something you’re building.";
+
+ const feat = C.projects.filter(p=>p.featured).slice(0,4);
+ const posts = C.posts.slice(0,3);
+
+ return `
 <section class="hero"><div class="wrap">
- <div><h1>Burhanuddin Malik</h1>
-  <p class="tag">Creating with Purpose. Exploring with Curiosity. Growing with Every Journey.</p>
-  <p class="intro">I’m Burhanuddin Malik — a creative learner and curious explorer with a growing interest in art, communication, technology, and entrepreneurship. This portfolio brings together the work, experiences, and ideas that continue to shape my journey.</p>
-  <div class="row">${A("/work","Explore My Work","btn solid")}${A("/journey","Explore My Journey","btn ghost")}</div></div>
- ${archBox(C.settings.hero_photo,"Professional photograph goes here")}
+ <div><h1>${esc(name)}</h1>
+  <p class="tag">${esc(tagline)}</p>
+  <p class="intro">${paras(intro)}</p>
+  <div class="row">${A(btn1U,esc(btn1L),"btn solid")}${A(btn2U,esc(btn2L),"btn ghost")}</div></div>
+ ${archBox(s.hero_photo,"Professional photograph goes here")}
 </div></section>
-${feat.length?`<section><div class="wrap"><div class="head"><h2>Featured work</h2>${A("/work","See all work","link")}</div><div class="grid">${feat.map(projCard).join("")}</div></div></section>`:""}
+${feat.length?`<section><div class="wrap"><div class="head"><h2>${esc(featTitle)}</h2>${A("/work","See all work","link")}</div><div class="grid">${feat.map(projCard).join("")}</div></div></section>`:""}
 <section class="band"><div class="wrap split">
- <div><h2>Explore my journey</h2><p class="muted" style="margin:1rem 0 1.6rem">From Mumbai and Indore to Aljamea, from a first sketch to large-scale paintings, and now business and technology. Each chapter has its own story.</p>${A("/journey","Open the timeline","btn ghost")}</div>
+ <div><h2>${esc(bandTitle)}</h2><p class="muted" style="margin:1rem 0 1.6rem">${esc(bandText)}</p>${A("/journey","Open the timeline","btn ghost")}</div>
  <div class="tl">${C.journey.slice(0,4).map(m=>`<div class="ms"><span class="when">${esc(m.period)}</span><h3>${esc(m.title)}</h3></div>`).join("")}</div>
 </div></section>
 <section><div class="wrap split">
- <p class="quote">A journey shaped by curiosity, creativity, and continuous learning.</p>
- <div><p class="muted" style="margin-bottom:1.4rem">I used to be shy and reserved. Time at Aljamea helped me grow comfortable with crowds, communication, questions and responsibility. Today art, calligraphy, technology and business all shape how I learn.</p>${A("/about","More about me","link")}</div>
+ <p class="quote">${esc(quote)}</p>
+ <div><p class="muted" style="margin-bottom:1.4rem">${esc(quoteBody)}</p>${A("/about","More about me","link")}</div>
 </div></section>
-<section class="band"><div class="wrap"><div class="head"><h2>Latest articles</h2>${A("/blog","Visit the blog","link")}</div>${postGrid(posts)}</div></section>
-<section><div class="wrap split"><h2>Let’s talk about art, ideas, or something you’re building.</h2><div>${A("/contact","Get in touch","btn solid")}</div></div></section>`};
+<section class="band"><div class="wrap"><div class="head"><h2>${esc(blogTitle)}</h2>${A("/blog","Visit the blog","link")}</div>${postGrid(posts)}</div></section>
+<section><div class="wrap split"><h2>${esc(contactTitle)}</h2><div>${A("/contact","Get in touch","btn solid")}</div></div></section>`;
+};
 
 const postGrid=l=>l.length?`<div class="grid">${l.map(p=>A("/blog/"+p.slug,`${pic(p.cover,p.title)}<h3>${esc(p.title)}</h3><div class="meta">${p.soon?`<span class="soon">Coming soon</span>`:`<span>${esc(fmtDate(p.date||p.created))}</span>`}${p.category?`<span class="pill">${esc(p.category)}</span>`:""}</div><p>${esc(p.excerpt)}</p>`,"card")).join("")}</div>`:`<p class="muted">The first articles are on their way.</p>`;
 
-V.about=()=>`
-<section><div class="wrap"><h1 style="font-size:clamp(2.2rem,6vw,4.2rem);max-width:18ch">A journey shaped by curiosity, creativity, and continuous learning.</h1></div></section>
+V.about=()=>{
+ const s = C.settings || {};
+ const title = s.about_title || "A journey shaped by curiosity, creativity, and continuous learning.";
+ const who = s.about_who_text || "I’m an artist, a learner and a future entrepreneur. I was born in Mumbai, brought up in Indore, and I now study B.Com at Burhani College.\n\nMy interests move between art, Arabic calligraphy, technology, AI, communication, public speaking, psychology, business and entrepreneurship. One theme runs through all of them: learning through doing.";
+ let interests = ["Art","Arabic calligraphy","Technology","AI","Communication","Public speaking","Psychology","Business","Entrepreneurship","Learning","Personal growth"];
+ if (s.about_interests) {
+  try { interests = typeof s.about_interests==="string" ? JSON.parse(s.about_interests) : s.about_interests; } catch(e){}
+ }
+ const growth = s.about_growth_text || "I was shy, reserved and introverted. Joining Aljamea-tus-Saifiyah Surat put me among larger groups and new people, with new responsibilities: communication, collaboration, public speaking and everyday social interaction.\n\nIt wasn’t an overnight change. Comfort came gradually, through one conversation, one role and one responsibility at a time. One lesson stayed with me: asking questions is part of learning, not a sign of weakness.";
+ const creativity = s.about_creativity_text || "It began around Standard 4 with a small A5 sunset painting made in a painting class, which my teacher appreciated. That grew gradually into sketching, painting, large canvases, Arabic handwriting, calligraphy and Maaraz decoration.\n\nKhat has become both a technical and an intellectual discipline for me, especially through a two-month course on Thuluth from Misr.";
+ const curiosity = s.about_curiosity_text || "Psychology, technology, AI and business keep me asking questions. I’m learning Python, Django and web development, and exploring how AI can help me build things. These are areas I’m learning, not areas I’ve mastered.";
+ const drives = s.about_drives_text || "Helping others, patience, calmness, continuous learning and creativity.";
+ 
+ let edu = [["73%","10th"],["76%","12th, Commerce"],["B.Com","Burhani College, current"]];
+ if (s.about_education_items) {
+  try { edu = typeof s.about_education_items==="string" ? JSON.parse(s.about_education_items) : s.about_education_items; } catch(e){}
+ }
+ const eduPath = s.about_education_path || "A convent school in Mumbai for pre-primary, then MSB Educational Institute in Indore until Grade 9, then Aljamea-tus-Saifiyah Surat for about four years, and later Aljamea-tus-Saifiyah Marol.";
+ 
+ let learning = ["Khat","Tazheeb","AI","Python","Django","Web development","Communication","Psychology","Business","Entrepreneurship"];
+ if (s.about_learning_items) {
+  try { learning = typeof s.about_learning_items==="string" ? JSON.parse(s.about_learning_items) : s.about_learning_items; } catch(e){}
+ }
+
+ return `
+<section><div class="wrap"><h1 style="font-size:clamp(2.2rem,6vw,4.2rem);max-width:18ch">${esc(title)}</h1></div></section>
 <section class="band" id="who"><div class="wrap split">
- ${archBox(C.settings.about_photo,"Photograph to be added")}
+ ${archBox(s.about_photo,"Photograph to be added")}
  <div><h2 style="margin-bottom:1rem">Who I am</h2>
- ${paras("I’m an artist, a learner and a future entrepreneur. I was born in Mumbai, brought up in Indore, and I now study B.Com at Burhani College.\n\nMy interests move between art, Arabic calligraphy, technology, AI, communication, public speaking, psychology, business and entrepreneurship. One theme runs through all of them: learning through doing.")}
- <div class="interests">${["Art","Arabic calligraphy","Technology","AI","Communication","Public speaking","Psychology","Business","Entrepreneurship","Learning","Personal growth"].map(i=>`<span>${i}</span>`).join("")}</div></div>
+ ${paras(who)}
+ <div class="interests">${interests.map(i=>`<span>${esc(i)}</span>`).join("")}</div></div>
 </div></section>
 <section id="growth"><div class="wrap split">
  <div><h2 style="margin-bottom:1rem">My growth</h2>
- ${paras("I was shy, reserved and introverted. Joining Aljamea-tus-Saifiyah Surat put me among larger groups and new people, with new responsibilities: communication, collaboration, public speaking and everyday social interaction.\n\nIt wasn’t an overnight change. Comfort came gradually, through one conversation, one role and one responsibility at a time. One lesson stayed with me: asking questions is part of learning, not a sign of weakness.")}
+ ${paras(growth)}
  <p style="margin-top:1rem">${A("/journey#aljamea-surat","Read this chapter","link")}</p></div>
- ${ph("Photograph to be added")}
+ ${s.about_growth_photo ? pic(s.about_growth_photo,"Growth photo") : ph("Photograph to be added")}
 </div></section>
 <section class="band"><div class="wrap"><div class="pillars">
- <div id="creativity"><h3>Creativity</h3>${paras("It began around Standard 4 with a small A5 sunset painting made in a painting class, which my teacher appreciated. That grew gradually into sketching, painting, large canvases, Arabic handwriting, calligraphy and Maaraz decoration.\n\nKhat has become both a technical and an intellectual discipline for me, especially through a two-month course on Thuluth from Misr.")}</div>
- <div id="curiosity"><h3>Curiosity</h3>${paras("Psychology, technology, AI and business keep me asking questions. I’m learning Python, Django and web development, and exploring how AI can help me build things. These are areas I’m learning, not areas I’ve mastered.")}</div>
- <div id="drives"><h3>What drives me</h3>${paras("Helping others, patience, calmness, continuous learning and creativity.")}</div>
+ <div id="creativity"><h3>Creativity</h3>${paras(creativity)}</div>
+ <div id="curiosity"><h3>Curiosity</h3>${paras(curiosity)}</div>
+ <div id="drives"><h3>What drives me</h3>${paras(drives)}</div>
 </div></div></section>
 <section id="education"><div class="wrap"><h2>Education</h2>
- <div class="edu"><div><b>73%</b><span>10th</span></div><div><b>76%</b><span>12th, Commerce</span></div><div><b>B.Com</b><span>Burhani College, current</span></div></div>
- <p class="path">A convent school in Mumbai for pre-primary, then MSB Educational Institute in Indore until Grade 9, then Aljamea-tus-Saifiyah Surat for about four years, and later Aljamea-tus-Saifiyah Marol.</p>
+ <div class="edu">${edu.map(e=>`<div><b>${esc(Array.isArray(e)?e[0]:e.val||"")}</b><span>${esc(Array.isArray(e)?e[1]:e.label||"")}</span></div>`).join("")}</div>
+ <p class="path">${esc(eduPath)}</p>
  <p style="margin-top:1rem">${A("/journey","See the full journey","link")}</p></div></section>
 <section class="band" id="learning"><div class="wrap"><h2>What I’m learning</h2>
  <p class="muted" style="margin:1rem 0 0">Right now I’m studying and experimenting with:</p>
- <div class="interests">${["Khat","Tazheeb","AI","Python","Django","Web development","Communication","Psychology","Business","Entrepreneurship"].map(i=>`<span>${rich(i)}</span>`).join("")}</div>
+ <div class="interests">${learning.map(i=>`<span>${rich(i)}</span>`).join("")}</div>
  <p style="margin-top:1.4rem">${A("/journey#technology-and-ai","How I started building","link")}</p></div></section>`;
+};
 
 V.journey=()=>`<section><div class="wrap">
  <h1 style="font-size:clamp(2.4rem,6vw,4.4rem)">My journey</h1>
@@ -430,8 +517,13 @@ async function articleView(slug){
  <p style="margin-top:3rem">${A("/blog","Back to blog","link")}</p></div></section>`}
 
 const stars=n=>`<div class="rate"><span>${n}</span><span class="stars" data-rate="${n}">${[1,2,3,4,5].map(i=>`<button type="button" aria-label="${n}: ${i} of 5" data-s="${i}">★</button>`).join("")}</span></div>`;
-V.contact=()=>`<section><div class="wrap split" style="align-items:start">
- <div><h1 style="font-size:clamp(2.4rem,6vw,4.4rem);margin-bottom:1.4rem">Contact</h1>
+V.contact=()=>{
+ const s = C.settings || {};
+ const heading = s.contact_heading || "Contact";
+ const intro = s.contact_intro || "";
+ return `<section><div class="wrap split" style="align-items:start">
+ <div><h1 style="font-size:clamp(2.4rem,6vw,4.4rem);margin-bottom:1.4rem">${esc(heading)}</h1>
+  ${intro?`<div class="muted" style="margin-bottom:1.4rem">${paras(intro)}</div>`:""}
   <form class="f" id="cf"><label>Name<input type="text" name="name" required maxlength="100" autocomplete="name"></label><label>Email<input type="email" name="email" required maxlength="200" autocomplete="email"></label><label>Message<textarea name="message" required maxlength="4000"></textarea></label>
   <div class="hp" aria-hidden="true"><label>Website<input type="text" name="website" tabindex="-1" autocomplete="off"></label></div>
   <div><button class="btn solid" type="submit">Send message</button></div><div id="cmsg" role="status"></div></form>
@@ -439,12 +531,20 @@ V.contact=()=>`<section><div class="wrap split" style="align-items:start">
  <div><h2 style="margin-bottom:1rem">Anonymous feedback</h2><p class="muted" style="margin-bottom:1.2rem">Tell me how the site feels. No account needed.</p>
   <form class="f" id="ff">${["Design","Content","Navigation","Overall Experience"].map(stars).join("")}<label>Comment (optional)<textarea name="comment" maxlength="1000"></textarea></label><div><button class="btn ghost" type="submit">Send feedback</button></div><div id="fmsg" role="status"></div></form></div>
 </div></section>`;
+};
 V.nf=()=>`<section><div class="wrap"><h1>Page not found</h1><p style="margin:1rem 0">That page doesn’t exist.</p>${A("/","Back to home","link")}</div></section>`;
 
 /* ---------- router ---------- */
 const TITLES={about:"About",journey:"Journey",work:"Work",blog:"Blog",contact:"Contact",achievements:"Achievements"};
 async function route(){
  const seg=location.pathname.split("/").filter(Boolean);let html,title="Burhanuddin Malik",ex={};CUR=(seg[0]==="work"&&seg[1]&&seg[1]!=="gallery")?seg[1]:"";
+ if(C.preview && !$(".prev-banner")){
+  const pb = document.createElement("div");
+  pb.className = "prev-banner";
+  pb.style.cssText = "background:var(--accent);color:var(--on);padding:.55rem 1.4rem;font-size:.9rem;font-weight:600;display:flex;justify-content:space-between;align-items:center;position:sticky;top:0;z-index:99;box-shadow:0 2px 12px rgba(0,0,0,.3)";
+  pb.innerHTML = `<span>Preview Mode &mdash; Showing draft and unpublished content</span><a href="/admin" style="color:inherit;text-decoration:underline">Return to Admin</a>`;
+  document.body.prepend(pb);
+ }
  if(!seg.length)html=V.home();
  else if(seg[0]==="work"&&seg[1]==="gallery"){html=V.gallery();title="Gallery | "+title}
  else if(seg[0]==="work"&&seg[1]){const p=P(seg[1]);html=V.case(seg[1]);if(p){title=p.title+" | "+title;ex={kind:"project",slug:p.slug}}}
@@ -508,7 +608,17 @@ document.addEventListener("submit",async e=>{
 
 /* ---------- start ---------- */
 (async()=>{
- try{const r=await fetch("/api/content"+(PREVIEW?"?preview=1":""));if(r.ok){C=await r.json();C.projects=C.projects.map(norm)}}catch(e){}
+ try{
+  const r=await fetch("/api/content"+(PREVIEW?"?preview=1":""));
+  if(r.ok){
+   C=await r.json();
+   C.projects=C.projects.map(norm);
+   drawThemes();
+   if(!store.get("theme")&&C.settings&&C.settings.theme_default){
+    setTheme(C.settings.theme_default);
+   }
+  }
+ }catch(e){}
  route();
 })();
 </script>

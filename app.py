@@ -35,7 +35,18 @@ KIND_LABEL = {"detail": "Full detail", "project": "Project", "gallery": "Artwork
               "achievement": "Achievement", "post": "Blog post", "special": "Special achievement",
               "artwork": "Private artwork", "appreciation": "Appreciation entry",
               "reflection": "Reflection", "journal": "Journal entry", "file": "File"}
-PUBLIC_SETTINGS = ["instagram", "whatsapp", "email", "hero_photo", "about_photo"]
+PUBLIC_SETTINGS = [
+    "instagram", "whatsapp", "email", "hero_photo", "about_photo", "about_growth_photo",
+    "home_name", "home_tagline", "home_intro",
+    "home_btn1_label", "home_btn1_link", "home_btn2_label", "home_btn2_link",
+    "home_feat_title", "home_band_title", "home_band_text",
+    "home_quote", "home_quote_body", "home_blog_title", "home_contact_title",
+    "about_title", "about_who_text", "about_interests", "about_growth_text",
+    "about_creativity_text", "about_curiosity_text", "about_drives_text",
+    "about_education_items", "about_education_path", "about_learning_items",
+    "theme_default", "theme_enabled",
+    "linkedin", "github", "twitter", "contact_heading", "contact_intro", "contact_other_links"
+]
 DEFAULT_ROLE_SECTIONS = {"A": PRIVATE_KINDS[:], "B": ["special", "appreciation", "reflection"], "C": ["special"]}
 LV = {"A": 3, "B": 2, "C": 1}
 ACCESS_RANK = {"C": 1, "B": 2, "A": 3, "O": 99}
@@ -87,6 +98,8 @@ CREATE TABLE IF NOT EXISTS passcodes(id INTEGER PRIMARY KEY, label TEXT, role TE
   active INTEGER DEFAULT 1, ver TEXT, created TEXT, last_used TEXT, uses INTEGER DEFAULT 0);
 CREATE TABLE IF NOT EXISTS settings(k TEXT PRIMARY KEY, v TEXT);
 CREATE TABLE IF NOT EXISTS backups(id INTEGER PRIMARY KEY, ts TEXT, name TEXT UNIQUE, kind TEXT, size INT, status TEXT, note TEXT);
+CREATE TABLE IF NOT EXISTS media(id INTEGER PRIMARY KEY, name TEXT UNIQUE, original_name TEXT, ext TEXT, size INT, is_private INT DEFAULT 0, created TEXT);
+CREATE INDEX IF NOT EXISTS ix_media_ext ON media(ext);
 """
 
 
@@ -126,21 +139,38 @@ def ex(sql, *a):
     return c
 
 
+def sync_media(c):
+    for is_priv, folder in ((0, UP_PUB), (1, UP_PRIV)):
+        if os.path.exists(folder):
+            for fname in os.listdir(folder):
+                fpath = os.path.join(folder, fname)
+                if os.path.isfile(fpath) and NAME_RE.match(fname):
+                    if not c.execute("SELECT 1 FROM media WHERE name=?", (fname,)).fetchone():
+                        sz = os.path.getsize(fpath)
+                        ext = fname.rsplit(".", 1)[-1].lower() if "." in fname else ""
+                        c.execute("INSERT OR IGNORE INTO media(name, original_name, ext, size, is_private, created) VALUES(?,?,?,?,?,?)",
+                                  (fname, fname, ext, sz, is_priv, now()))
+
+
 def init_db():
     c = connect()
     c.executescript(SCHEMA)
+    env_pw = os.environ.get("OWNER_PASSWORD", "").strip()
     if not c.execute("SELECT 1 FROM users WHERE role='owner'").fetchone():
-        pw = os.environ.get("OWNER_PASSWORD") or secrets.token_urlsafe(12)
+        pw = env_pw or secrets.token_urlsafe(12)
         c.execute("INSERT INTO users(username,name,role,pw,sections,created) VALUES('owner','Burhanuddin','owner',?,'[]',?)",
                   (generate_password_hash(pw), now()))
-        if not os.environ.get("OWNER_PASSWORD"):
+        if not env_pw:
             print("=" * 60 + f"\n FIRST RUN. Owner login:\n   username: owner\n   password: {pw}\n"
                   " Change it in Admin > Settings.\n" + "=" * 60, flush=True)
+    elif env_pw:
+        c.execute("UPDATE users SET pw=? WHERE role='owner'", (generate_password_hash(env_pw),))
     if not c.execute("SELECT 1 FROM items LIMIT 1").fetchone():
         for it in seed_items():
             c.execute("INSERT INTO items(kind,slug,title,data,status,access,pos,created,updated) VALUES(?,?,?,?,?,?,?,?,?)",
                       (it["kind"], it["slug"], it["title"], json.dumps(it["data"], ensure_ascii=False),
                        "published", "A", it.get("pos", 0), now(), now()))
+    sync_media(c)
     c.commit()
     sync_backups(c)
     c.close()
@@ -328,7 +358,7 @@ def clean_item(j, kind):
     data = j.get("data") or {}
     if not isinstance(data, dict) or len(json.dumps(data)) > 300000:
         raise ValueError("The content is too large or invalid.")
-    status = j.get("status") if j.get("status") in ("draft", "published") else "draft"
+    status = j.get("status") if j.get("status") in ("draft", "published", "unpublished") else "draft"
     access = j.get("access") if j.get("access") in ACCESS_RANK else "A"
     try:
         pos = int(j.get("pos") or 0)
@@ -437,8 +467,11 @@ def upload():
     name = secrets.token_hex(16) + "." + ext
     f.save(os.path.join(UP_PRIV if private else UP_PUB, name))
     size = os.path.getsize(os.path.join(UP_PRIV if private else UP_PUB, name))
-    log("File uploaded", f.filename[:100], "archive" if private else "portfolio")
-    return jsonify(url=(f"/api/private/file/{name}" if private else f"/uploads/{name}"), name=f.filename[:120], size=size)
+    orig_name = f.filename[:120]
+    ex("INSERT OR REPLACE INTO media(name, original_name, ext, size, is_private, created) VALUES(?,?,?,?,?,?)",
+       name, orig_name, ext, size, 1 if private else 0, now())
+    log("File uploaded", orig_name, "archive" if private else "portfolio")
+    return jsonify(url=(f"/api/private/file/{name}" if private else f"/uploads/{name}"), name=orig_name, size=size)
 
 
 NAME_RE = re.compile(r"^[a-f0-9]{32}\.[a-z0-9]{2,5}$")
@@ -450,6 +483,127 @@ def public_file(name):
         abort(404)
     r = send_from_directory(UP_PUB, name, max_age=2592000)
     return r
+
+
+# ------------------------------------------------------------------ media library & tools
+@app.get("/api/admin/media")
+@owner_only
+def media_list():
+    q = request.args.get("q", "").strip().lower()
+    m_type = request.args.get("type", "all")
+    vis = request.args.get("visibility", "all")
+    sort = request.args.get("sort", "newest")
+
+    sql = "SELECT * FROM media WHERE 1=1"
+    params = []
+    if q:
+        sql += " AND (LOWER(original_name) LIKE ? OR LOWER(name) LIKE ?)"
+        params.extend([f"%{q}%", f"%{q}%"])
+    if m_type == "images":
+        sql += " AND ext IN ('jpg', 'jpeg', 'png', 'webp', 'gif')"
+    elif m_type == "docs":
+        sql += " AND ext NOT IN ('jpg', 'jpeg', 'png', 'webp', 'gif')"
+    if vis == "public":
+        sql += " AND is_private=0"
+    elif vis == "private":
+        sql += " AND is_private=1"
+
+    if sort == "oldest":
+        sql += " ORDER BY id ASC"
+    elif sort == "name":
+        sql += " ORDER BY original_name ASC"
+    elif sort == "size":
+        sql += " ORDER BY size DESC"
+    else:
+        sql += " ORDER BY id DESC"
+
+    rows = qa(sql, *params)
+    items = []
+    for r in rows:
+        items.append({
+            "id": r["id"],
+            "name": r["name"],
+            "original_name": r["original_name"] or r["name"],
+            "ext": r["ext"],
+            "size": r["size"],
+            "is_private": bool(r["is_private"]),
+            "created": r["created"],
+            "url": f"/api/private/file/{r['name']}" if r["is_private"] else f"/uploads/{r['name']}"
+        })
+    return jsonify(items=items)
+
+
+@app.get("/api/admin/media/<name>/usage")
+@owner_only
+def media_usage(name):
+    if not NAME_RE.match(name):
+        abort(404)
+    rows = qa("SELECT id, kind, title, slug FROM items WHERE data LIKE ?", f"%{name}%")
+    s_rows = qa("SELECT k FROM settings WHERE v LIKE ?", f"%{name}%")
+    uses = []
+    for r in rows:
+        uses.append({"type": "item", "kind": r["kind"], "title": r["title"], "id": r["id"], "slug": r["slug"]})
+    for s in s_rows:
+        uses.append({"type": "setting", "key": s["k"]})
+    return jsonify(name=name, count=len(uses), uses=uses)
+
+
+@app.delete("/api/admin/media/<name>")
+@owner_only
+def media_delete(name):
+    if not NAME_RE.match(name):
+        abort(404)
+    m = q1("SELECT * FROM media WHERE name=?", name)
+    for folder in (UP_PUB, UP_PRIV):
+        p = os.path.join(folder, name)
+        if os.path.exists(p):
+            try:
+                os.remove(p)
+            except Exception:
+                pass
+    ex("DELETE FROM media WHERE name=?", name)
+    log("Media deleted", (m["original_name"] if m else name)[:100], "portfolio")
+    return jsonify(ok=True)
+
+
+@app.post("/api/admin/reorder")
+@owner_only
+def items_reorder():
+    j = request.get_json(silent=True) or {}
+    kind = str(j.get("kind", ""))
+    ids = j.get("ids", [])
+    if not isinstance(ids, list):
+        raise ValueError("ids must be a list of item IDs.")
+    for pos, item_id in enumerate(ids):
+        ex("UPDATE items SET pos=? WHERE id=? AND kind=?", pos, item_id, kind)
+    log(f"Reordered {kind} items", f"{len(ids)} items", area_of(kind))
+    return jsonify(ok=True)
+
+
+@app.get("/api/admin/search")
+@owner_only
+def admin_search():
+    q = request.args.get("q", "").strip()
+    if not q:
+        return jsonify(items=[], media=[])
+    like = f"%{q}%"
+    rows = qa("SELECT id, kind, slug, title, status, access, updated, data FROM items WHERE title LIKE ? OR slug LIKE ? OR data LIKE ? ORDER BY updated DESC LIMIT 50", like, like, like)
+    items = []
+    for r in rows:
+        d = json.loads(r["data"] or "{}")
+        items.append({
+            "id": r["id"],
+            "kind": r["kind"],
+            "slug": r["slug"],
+            "title": r["title"],
+            "status": r["status"],
+            "access": r["access"],
+            "updated": r["updated"],
+            "subtitle": d.get("cat") or d.get("category") or d.get("year") or d.get("period") or ""
+        })
+    m_rows = qa("SELECT * FROM media WHERE name LIKE ? OR original_name LIKE ? ORDER BY created DESC LIMIT 20", like, like)
+    media = [{**dict(m), "url": f"/api/private/file/{m['name']}" if m["is_private"] else f"/uploads/{m['name']}"} for m in m_rows]
+    return jsonify(items=items, media=media)
 
 
 # ------------------------------------------------------------------ public content
@@ -474,7 +628,7 @@ def content():
     out["post"].sort(key=lambda p: p.get("date") or p["created"], reverse=True)
     st = {k: setting(k, "") for k in PUBLIC_SETTINGS}
     return jsonify(projects=out["project"], gallery=out["gallery"], journey=out["journey"],
-                   achievements=out["achievement"], posts=out["post"], settings=st)
+                   achievements=out["achievement"], posts=out["post"], settings=st, preview=prev)
 
 
 @app.get("/api/post/<slug>")
@@ -948,11 +1102,14 @@ def overview():
     return jsonify(
         projects=n("SELECT COUNT(*) FROM items WHERE kind='project'"),
         artworks=n("SELECT COUNT(*) FROM items WHERE kind IN ('gallery','artwork')"),
+        gallery=n("SELECT COUNT(*) FROM items WHERE kind='gallery'"),
         achievements=n("SELECT COUNT(*) FROM items WHERE kind IN ('achievement','special')"),
+        milestones=n("SELECT COUNT(*) FROM items WHERE kind='journey'"),
         journal=n("SELECT COUNT(*) FROM items WHERE kind='journal'"),
         files=n("SELECT COUNT(*) FROM items WHERE kind='file'"),
+        media=n("SELECT COUNT(*) FROM media"),
         posts=n("SELECT COUNT(*) FROM items WHERE kind='post' AND status='published'"),
-        drafts=n("SELECT COUNT(*) FROM items WHERE kind='post' AND status='draft'"),
+        drafts=n("SELECT COUNT(*) FROM items WHERE kind='post' AND status!='published'"),
         unread=n("SELECT COUNT(*) FROM contacts WHERE read=0"),
         viewers=n("SELECT COUNT(*) FROM users WHERE role!='owner'"),
         recent=qa("SELECT * FROM activity ORDER BY id DESC LIMIT 8"),
@@ -981,17 +1138,22 @@ def settings_get():
 @owner_only
 def settings_put():
     j = request.get_json(silent=True) or {}
+    vals = j.get("values") if "values" in j and isinstance(j["values"], dict) else j
     for k in PUBLIC_SETTINGS:
-        if k in (j.get("values") or {}):
-            v = str(j["values"][k]).strip()[:300]
-            if v and k in ("instagram", "whatsapp") and not re.match(r"^https?://", v):
+        if k in vals:
+            v = vals[k]
+            if isinstance(v, (dict, list)):
+                v = json.dumps(v, ensure_ascii=False)
+            else:
+                v = str(v).strip()[:50000]
+            if v and k in ("instagram", "whatsapp", "linkedin", "github", "twitter") and not re.match(r"^https?://", v):
                 raise ValueError(f"{k.title()} must be a full link starting with https://")
             put_setting(k, v)
     if isinstance(j.get("role_sections"), dict):
         put_setting("role_sections", json.dumps({k: valid_sections(j["role_sections"].get(k)) for k in "ABC"}))
     if "retention_daily_days" in j:
         put_setting("retention_daily_days", str(max(0, int(j["retention_daily_days"] or 0))))
-    log("Settings changed", "", "settings")
+    log("Settings changed", ", ".join(list(vals.keys())[:5]), "settings")
     return jsonify(ok=True)
 
 
