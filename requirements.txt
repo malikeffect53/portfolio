@@ -1,8 +1,7 @@
 Flask>=3.0
 gunicorn>=22.0
 openpyxl>=3.1
+psycopg2-binary>=2.9.9
 pg8000>=1.31.5
 scramp>=1.4.4
-# Optional: uncomment to copy every backup to external (S3-compatible) storage
-# boto3>=1.34
-
+requests>=2.31.0

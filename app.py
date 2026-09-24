@@ -36,7 +36,7 @@ DATA = os.environ.get("DATA_DIR", "/tmp/data" if IS_VERCEL else os.path.join(BAS
 DB_PATH = os.path.join(DATA, "site.db")
 DATABASE_URL = os.environ.get("DATABASE_URL") or os.environ.get("POSTGRES_URL") or os.environ.get("SUPABASE_DB_URL")
 SUPABASE_URL = os.environ.get("SUPABASE_URL")
-SUPABASE_KEY = os.environ.get("SUPABASE_KEY")
+SUPABASE_KEY = os.environ.get("SUPABASE_KEY") or os.environ.get("SUPABASE_SERVICE_ROLE_KEY")
 SITE_DOMAIN = os.environ.get("SITE_DOMAIN", "")
 ALLOWED_ORIGIN = os.environ.get("ALLOWED_ORIGIN", "")
 UP_PUB = os.path.join(DATA, "uploads", "public")
@@ -44,11 +44,12 @@ UP_PRIV = os.path.join(DATA, "uploads", "private")
 BK = os.path.join(DATA, "backups")
 STATIC = os.path.join(BASE, "static")
 STATIC_UPLOADS = os.path.join(STATIC, "uploads")
-for d in (DATA, UP_PUB, UP_PRIV, BK):
-    try:
-        os.makedirs(d, exist_ok=True)
-    except OSError:
-        pass
+if not IS_VERCEL:
+    for d in (DATA, UP_PUB, UP_PRIV, BK):
+        try:
+            os.makedirs(d, exist_ok=True)
+        except OSError:
+            pass
 
 
 PUBLIC_KINDS = ["project", "gallery", "journey", "achievement", "post"]
@@ -90,18 +91,7 @@ def secret():
     s = os.environ.get("SECRET_KEY") or os.environ.get("SESSION_SECRET") or os.environ.get("FLASK_SECRET_KEY")
     if s:
         return s
-    p = os.path.join(DATA, "secret.key")
-    if not os.path.exists(p):
-        try:
-            with open(p, "w") as f:
-                f.write(secrets.token_hex(32))
-            os.chmod(p, 0o600)
-        except OSError:
-            return "ephemeral-secret-key-please-set-SECRET_KEY-in-vercel"
-    try:
-        return open(p).read().strip()
-    except OSError:
-        return "ephemeral-secret-key-please-set-SECRET_KEY-in-vercel"
+    return "default-secret-key-please-set-SECRET_KEY-in-vercel-dashboard"
 
 
 app = Flask(__name__, static_folder=None)
@@ -139,7 +129,7 @@ CREATE TABLE IF NOT EXISTS passcodes(id INTEGER PRIMARY KEY, label TEXT, role TE
 CREATE TABLE IF NOT EXISTS settings(k TEXT PRIMARY KEY, v TEXT);
 CREATE TABLE IF NOT EXISTS backups(id INTEGER PRIMARY KEY, ts TEXT, name TEXT UNIQUE, kind TEXT, size INT, status TEXT, note TEXT);
 CREATE TABLE IF NOT EXISTS media(id INTEGER PRIMARY KEY, name TEXT UNIQUE, original_name TEXT, ext TEXT, size INT, is_private INT DEFAULT 0,
-  title TEXT DEFAULT '', caption TEXT DEFAULT '', alt TEXT DEFAULT '', project TEXT DEFAULT '', pos INTEGER DEFAULT 0, created TEXT, content_b64 TEXT DEFAULT '');
+  title TEXT DEFAULT '', caption TEXT DEFAULT '', alt TEXT DEFAULT '', project TEXT DEFAULT '', pos INTEGER DEFAULT 0, created TEXT, content_b64 TEXT DEFAULT '', storage_url TEXT DEFAULT '', storage_bucket TEXT DEFAULT '');
 CREATE INDEX IF NOT EXISTS ix_media_ext ON media(ext);
 """
 
@@ -223,7 +213,7 @@ class PgCursorWrapper:
         elif re.match(r"^INSERT\s+OR\s+REPLACE\s+INTO\s+media\b", s, re.IGNORECASE):
             s = re.sub(r"^INSERT\s+OR\s+REPLACE\s+INTO\s+media", "INSERT INTO media", s, flags=re.IGNORECASE)
             if "ON CONFLICT" not in s.upper():
-                s = s.rstrip(";") + " ON CONFLICT(name) DO UPDATE SET original_name=EXCLUDED.original_name, ext=EXCLUDED.ext, size=EXCLUDED.size, is_private=EXCLUDED.is_private, created=EXCLUDED.created, content_b64=EXCLUDED.content_b64"
+                s = s.rstrip(";") + " ON CONFLICT(name) DO UPDATE SET original_name=EXCLUDED.original_name, ext=EXCLUDED.ext, size=EXCLUDED.size, is_private=EXCLUDED.is_private, created=EXCLUDED.created, content_b64=EXCLUDED.content_b64, storage_url=EXCLUDED.storage_url, storage_bucket=EXCLUDED.storage_bucket"
 
         needs_returning = False
         if re.match(r"^INSERT\s+INTO\s+", s, re.IGNORECASE) and not re.match(r"^INSERT\s+INTO\s+settings\b", s, re.IGNORECASE):
@@ -261,18 +251,112 @@ class PgConnectionWrapper:
 _pg_unreachable_until = 0
 
 
+def supabase_storage_upload(bucket: str, file_name: str, file_bytes: bytes, mime_type: str = "application/octet-stream") -> str:
+    """Uploads file_bytes directly to Supabase Storage via REST API. Returns public CDN URL or internal path."""
+    if not SUPABASE_URL or not SUPABASE_KEY:
+        return ""
+    base_url = SUPABASE_URL.rstrip("/")
+    url = f"{base_url}/storage/v1/object/{bucket}/{file_name}"
+    headers = {
+        "apikey": SUPABASE_KEY,
+        "Authorization": f"Bearer {SUPABASE_KEY}",
+        "Content-Type": mime_type,
+        "x-upsert": "true",
+    }
+    req = urllib.request.Request(url, data=file_bytes, headers=headers, method="POST")
+    try:
+        with urllib.request.urlopen(req, timeout=15) as resp:
+            if resp.status in (200, 201):
+                if bucket == "public-media":
+                    return f"{base_url}/storage/v1/object/public/{bucket}/{file_name}"
+                return f"/api/private/file/{file_name}"
+    except Exception as e:
+        print(f"[STORAGE] Upload to {bucket}/{file_name} failed: {e}", flush=True)
+    return ""
+
+
+def supabase_storage_sign_url(bucket: str, file_name: str, expires_in: int = 3600) -> str:
+    """Generates a short-lived signed URL for a private file in Supabase Storage."""
+    if not SUPABASE_URL or not SUPABASE_KEY:
+        return ""
+    base_url = SUPABASE_URL.rstrip("/")
+    url = f"{base_url}/storage/v1/object/sign/{bucket}/{file_name}"
+    payload = json.dumps({"expiresIn": expires_in}).encode("utf-8")
+    headers = {
+        "apikey": SUPABASE_KEY,
+        "Authorization": f"Bearer {SUPABASE_KEY}",
+        "Content-Type": "application/json",
+    }
+    req = urllib.request.Request(url, data=payload, headers=headers, method="POST")
+    try:
+        with urllib.request.urlopen(req, timeout=15) as resp:
+            data = json.loads(resp.read().decode("utf-8"))
+            signed_path = data.get("signedURL")
+            if signed_path:
+                return f"{base_url}/storage/v1{signed_path}"
+    except Exception as e:
+        print(f"[STORAGE] Signing URL for {bucket}/{file_name} failed: {e}", flush=True)
+    return ""
+
+
+def supabase_storage_delete(bucket: str, file_name: str) -> bool:
+    """Deletes an object from Supabase Storage."""
+    if not SUPABASE_URL or not SUPABASE_KEY:
+        return False
+    base_url = SUPABASE_URL.rstrip("/")
+    url = f"{base_url}/storage/v1/object/{bucket}"
+    payload = json.dumps({"prefixes": [file_name]}).encode("utf-8")
+    headers = {
+        "apikey": SUPABASE_KEY,
+        "Authorization": f"Bearer {SUPABASE_KEY}",
+        "Content-Type": "application/json",
+    }
+    req = urllib.request.Request(url, data=payload, headers=headers, method="DELETE")
+    try:
+        with urllib.request.urlopen(req, timeout=10) as resp:
+            return resp.status in (200, 204)
+    except Exception as e:
+        print(f"[STORAGE] Delete {bucket}/{file_name} failed: {e}", flush=True)
+    return False
+
+
 def connect():
     global _pg_unreachable_until
     now_ts = time.time()
     db_url = DATABASE_URL or os.environ.get("POSTGRES_URL") or os.environ.get("SUPABASE_DB_URL")
+    if db_url and "pooler.supabase.com" in db_url:
+        if ":5432" in db_url:
+            db_url = db_url.replace(":5432", ":6543")
+        if "sslmode=" not in db_url.lower():
+            db_url += ("&" if "?" in db_url else "?") + "sslmode=require"
     if db_url and now_ts > _pg_unreachable_until:
+        # 1. Try psycopg2-binary
+        try:
+            import psycopg2
+            raw_conn = psycopg2.connect(db_url, connect_timeout=15)
+            return PgConnectionWrapper(raw_conn)
+        except ImportError:
+            pass
+        except Exception as e:
+            print(f"[DB] psycopg2 connection failed: {e}", flush=True)
+
+        # 2. Try psycopg (v3)
+        try:
+            import psycopg
+            raw_conn = psycopg.connect(db_url, timeout=15)
+            return PgConnectionWrapper(raw_conn)
+        except ImportError:
+            pass
+        except Exception as e:
+            print(f"[DB] psycopg connection failed: {e}", flush=True)
+
+        # 3. Try pg8000 (pure-Python fallback)
         try:
             import pg8000.dbapi
             u = urlparse(db_url)
             ssl_ctx = ssl.create_default_context()
             ssl_ctx.check_hostname = False
             ssl_ctx.verify_mode = ssl.CERT_NONE
-            # Transaction mode pooler (6543) is essential for Vercel serverless functions
             port = u.port or (6543 if "pooler.supabase.com" in (u.hostname or "") else 5432)
             if IS_VERCEL and "pooler.supabase.com" in (u.hostname or "") and port == 5432:
                 port = 6543
@@ -287,13 +371,16 @@ def connect():
             )
             return PgConnectionWrapper(raw_conn)
         except Exception as e:
-            _pg_unreachable_until = now_ts + (5 if IS_VERCEL else 300)
-            print(f"[DB] PostgreSQL connection to Supabase failed: {e}. Falling back to SQLite.", flush=True)
-    c = sqlite3.connect(DB_PATH, timeout=15)
-    c.row_factory = sqlite3.Row
-    c.execute("PRAGMA journal_mode=WAL")
-    c.execute("PRAGMA foreign_keys=ON")
-    return c
+            _pg_unreachable_until = now_ts + (5 if IS_VERCEL else 15)
+            print(f"[DB] PostgreSQL connection to Supabase failed: {e}.", flush=True)
+
+    if not IS_VERCEL and os.path.exists(DB_PATH):
+        c = sqlite3.connect(DB_PATH, timeout=15)
+        c.row_factory = sqlite3.Row
+        c.execute("PRAGMA journal_mode=WAL")
+        c.execute("PRAGMA foreign_keys=ON")
+        return c
+    raise RuntimeError("Database connection unavailable. Please ensure DATABASE_URL is set in environment.")
 
 
 
@@ -326,6 +413,8 @@ def ex(sql, *a):
 
 
 def sync_media(c):
+    if IS_VERCEL:
+        return
     folders = [(0, UP_PUB), (1, UP_PRIV)]
     if os.path.exists(STATIC_UPLOADS):
         folders.append((0, STATIC_UPLOADS))
@@ -356,6 +445,8 @@ def sync_media(c):
 
 
 def init_db():
+    if IS_VERCEL:
+        return
     try:
         c = connect()
     except Exception as e:
@@ -364,7 +455,7 @@ def init_db():
     try:
         if isinstance(c, sqlite3.Connection):
             c.executescript(SCHEMA)
-            for col, ctype in (("title", "TEXT DEFAULT ''"), ("caption", "TEXT DEFAULT ''"), ("alt", "TEXT DEFAULT ''"), ("project", "TEXT DEFAULT ''"), ("pos", "INTEGER DEFAULT 0"), ("content_b64", "TEXT DEFAULT ''")):
+            for col, ctype in (("title", "TEXT DEFAULT ''"), ("caption", "TEXT DEFAULT ''"), ("alt", "TEXT DEFAULT ''"), ("project", "TEXT DEFAULT ''"), ("pos", "INTEGER DEFAULT 0"), ("content_b64", "TEXT DEFAULT ''"), ("storage_url", "TEXT DEFAULT ''"), ("storage_bucket", "TEXT DEFAULT ''")):
                 try:
                     c.execute(f"ALTER TABLE media ADD COLUMN {col} {ctype}")
                 except sqlite3.OperationalError:
@@ -750,15 +841,21 @@ def upload():
     raw_bytes = f.read()
     size = len(raw_bytes)
     content_b64 = base64.b64encode(raw_bytes).decode("ascii")
-    dest_dir = UP_PRIV if private else UP_PUB
-    try:
-        os.makedirs(dest_dir, exist_ok=True)
-        with open(os.path.join(dest_dir, name), "wb") as df:
-            df.write(raw_bytes)
-    except OSError:
-        pass
-    ex("INSERT OR REPLACE INTO media(name, original_name, ext, size, is_private, created, content_b64) VALUES(?,?,?,?,?,?,?)",
-       name, orig_name, ext, size, 1 if private else 0, now(), content_b64)
+    mime = mimetypes.guess_type(orig_name)[0] or "application/octet-stream"
+    bucket = "private-archive" if private else "public-media"
+    storage_url = ""
+    if SUPABASE_URL and SUPABASE_KEY:
+        storage_url = supabase_storage_upload(bucket, name, raw_bytes, mime)
+    if not IS_VERCEL:
+        dest_dir = UP_PRIV if private else UP_PUB
+        try:
+            os.makedirs(dest_dir, exist_ok=True)
+            with open(os.path.join(dest_dir, name), "wb") as df:
+                df.write(raw_bytes)
+        except OSError:
+            pass
+    ex("INSERT OR REPLACE INTO media(name, original_name, ext, size, is_private, created, content_b64, storage_url, storage_bucket) VALUES(?,?,?,?,?,?,?,?,?)",
+       name, orig_name, ext, size, 1 if private else 0, now(), content_b64, storage_url, bucket)
     log("File uploaded", orig_name, "archive" if private else "portfolio")
     return jsonify(url=(f"/api/private/file/{name}" if private else f"/uploads/{name}"), name=orig_name, size=size)
 
@@ -770,29 +867,37 @@ NAME_RE = re.compile(r"^[a-f0-9]{32}\.[a-z0-9]{2,5}$")
 def public_file(name):
     if not NAME_RE.match(name):
         abort(404)
-    disk_path = os.path.join(UP_PUB, name)
-    if os.path.exists(disk_path):
-        return send_from_directory(UP_PUB, name, max_age=2592000)
+    if not IS_VERCEL:
+        disk_path = os.path.join(UP_PUB, name)
+        if os.path.exists(disk_path):
+            return send_from_directory(UP_PUB, name, max_age=2592000)
     static_upload = os.path.join(STATIC_UPLOADS, name)
     if os.path.exists(static_upload):
         return send_from_directory(STATIC_UPLOADS, name, max_age=2592000)
-    row = q1("SELECT original_name, ext, content_b64 FROM media WHERE name=? AND is_private=0", name)
-    if not row or not row.get("content_b64"):
+    row = q1("SELECT original_name, ext, content_b64, storage_url FROM media WHERE name=? AND is_private=0", name)
+    if not row:
         abort(404)
-    try:
-        raw_bytes = base64.b64decode(row["content_b64"])
+    if row.get("storage_url"):
+        return redirect(row["storage_url"], 302)
+    if SUPABASE_URL:
+        return redirect(f"{SUPABASE_URL.rstrip('/')}/storage/v1/object/public/public-media/{name}", 302)
+    if row.get("content_b64"):
         try:
-            os.makedirs(UP_PUB, exist_ok=True)
-            with open(disk_path, "wb") as f:
-                f.write(raw_bytes)
-        except OSError:
+            raw_bytes = base64.b64decode(row["content_b64"])
+            if not IS_VERCEL:
+                try:
+                    os.makedirs(UP_PUB, exist_ok=True)
+                    with open(os.path.join(UP_PUB, name), "wb") as f:
+                        f.write(raw_bytes)
+                except OSError:
+                    pass
+            mime = mimetypes.guess_type(name)[0] or "application/octet-stream"
+            resp = Response(raw_bytes, mimetype=mime)
+            resp.headers["Cache-Control"] = "public, max-age=2592000"
+            return resp
+        except Exception:
             pass
-        mime = mimetypes.guess_type(name)[0] or "application/octet-stream"
-        resp = Response(raw_bytes, mimetype=mime)
-        resp.headers["Cache-Control"] = "public, max-age=2592000"
-        return resp
-    except Exception:
-        abort(404)
+    abort(404)
 
 
 # ------------------------------------------------------------------ media library & tools
@@ -884,13 +989,17 @@ def media_delete(name):
     if not NAME_RE.match(name):
         abort(404)
     m = q1("SELECT * FROM media WHERE name=?", name)
-    for folder in (UP_PUB, UP_PRIV):
-        p = os.path.join(folder, name)
-        if os.path.exists(p):
-            try:
-                os.remove(p)
-            except Exception:
-                pass
+    if not IS_VERCEL:
+        for folder in (UP_PUB, UP_PRIV):
+            p = os.path.join(folder, name)
+            if os.path.exists(p):
+                try:
+                    os.remove(p)
+                except Exception:
+                    pass
+    if SUPABASE_URL and SUPABASE_KEY:
+        bucket = "private-archive" if (m and m.get("is_private")) else "public-media"
+        supabase_storage_delete(bucket, name)
     ex("DELETE FROM media WHERE name=?", name)
     log("Media deleted", (m["original_name"] if m else name)[:100], "portfolio")
     return jsonify(ok=True)
@@ -1320,11 +1429,11 @@ def private_file(name):
     if not NAME_RE.match(name):
         abort(404)
     disk_path = os.path.join(UP_PRIV, name)
-    file_on_disk = os.path.exists(disk_path)
+    file_on_disk = (not IS_VERCEL) and os.path.exists(disk_path)
     row = None
     if not file_on_disk:
-        row = q1("SELECT original_name, ext, content_b64 FROM media WHERE name=?", name)
-        if not row or not row.get("content_b64"):
+        row = q1("SELECT original_name, ext, content_b64, storage_url FROM media WHERE name=?", name)
+        if not row:
             abort(404)
     rank, sections, full, _ = viewer_ctx(u)
     rows = [item_out(r) for r in db().execute("SELECT * FROM items WHERE kind IN (%s) AND data LIKE ?" % ",".join("?" * len(PRIVATE_KINDS)), PRIVATE_KINDS + [f"%{name}%"])]
@@ -1341,23 +1450,31 @@ def private_file(name):
         resp.headers["Cache-Control"] = "private, no-store"
         return resp
 
-    try:
-        raw_bytes = base64.b64decode(row["content_b64"])
+    if SUPABASE_URL and SUPABASE_KEY:
+        signed_url = supabase_storage_sign_url("private-archive", name, expires_in=3600)
+        if signed_url:
+            return redirect(signed_url, 302)
+
+    if row and row.get("content_b64"):
         try:
-            os.makedirs(UP_PRIV, exist_ok=True)
-            with open(disk_path, "wb") as f:
-                f.write(raw_bytes)
-        except OSError:
+            raw_bytes = base64.b64decode(row["content_b64"])
+            if not IS_VERCEL:
+                try:
+                    os.makedirs(UP_PRIV, exist_ok=True)
+                    with open(disk_path, "wb") as f:
+                        f.write(raw_bytes)
+                except OSError:
+                    pass
+            mime = mimetypes.guess_type(name)[0] or "application/octet-stream"
+            resp = Response(raw_bytes, mimetype=mime)
+            if as_attachment:
+                orig = row.get("original_name") or name
+                resp.headers["Content-Disposition"] = f'attachment; filename="{orig}"'
+            resp.headers["Cache-Control"] = "private, no-store"
+            return resp
+        except Exception:
             pass
-        mime = mimetypes.guess_type(name)[0] or "application/octet-stream"
-        resp = Response(raw_bytes, mimetype=mime)
-        if as_attachment:
-            orig = row.get("original_name") or name
-            resp.headers["Content-Disposition"] = f'attachment; filename="{orig}"'
-        resp.headers["Cache-Control"] = "private, no-store"
-        return resp
-    except Exception:
-        abort(404)
+    abort(404)
 
 
 # ------------------------------------------------------------------ archive admin settings
@@ -1744,6 +1861,7 @@ def make_backup(kind="manual", note=""):
     with BK_LOCK:
         ts = dt.datetime.now(dt.timezone.utc)
         name = f"backup-{ts:%Y%m%d-%H%M%S}-{kind}.zip"
+        os.makedirs(BK, exist_ok=True)
         path, tmp = os.path.join(BK, name), os.path.join(DATA, "_snapshot.db")
         c = connect()
         status, msg = "ok", note
@@ -1867,6 +1985,8 @@ def backups_download(i):
 def backups_restore(i):
     """Restoring replaces the live database with the backup. It needs: the owner's password, the typed word RESTORE,
     and it always takes a safety backup of the current site first."""
+    if DATABASE_URL or IS_VERCEL:
+        return jsonify(error="Database restore for PostgreSQL is managed directly in your Supabase Dashboard."), 400
     j = request.get_json(silent=True) or {}
     if rl_over("restore", 5, 900):
         return jsonify(error="Too many attempts."), 429
@@ -1947,8 +2067,27 @@ def robots():
 
 
 @app.get("/healthz")
-def healthz():
-    return "ok"
+@app.get("/api/health")
+def api_health():
+    return jsonify(status="ok", timestamp=now(), runtime="vercel" if IS_VERCEL else "standard")
+
+
+@app.get("/api/health-db")
+def api_health_db():
+    try:
+        c = connect()
+        cur = c.execute("SELECT 1")
+        row = cur.fetchone()
+        is_pg = isinstance(c, PgConnectionWrapper)
+        c.close()
+        return jsonify(
+            status="ok",
+            database="connected",
+            engine="postgresql" if is_pg else "sqlite",
+            test=row[0] if row else 1
+        )
+    except Exception as e:
+        return jsonify(status="error", database="disconnected", error=str(e)), 500
 
 
 PUBLIC_ROUTES = {"about", "journey", "work", "achievements", "blog", "contact"}
@@ -1966,13 +2105,13 @@ def spa(p):
     return html("index.html"), 404
 
 
-try:
-    init_db()
-except Exception as _e:
-    print(f"[WARN] Startup init_db failed: {_e}", flush=True)
-
-if not os.environ.get("NO_SCHEDULER") and not IS_VERCEL:
-    threading.Thread(target=scheduler, daemon=True).start()
-
 if __name__ == "__main__":
+    try:
+        init_db()
+    except Exception as _e:
+        print(f"[WARN] Startup init_db failed: {_e}", flush=True)
+
+    if not os.environ.get("NO_SCHEDULER") and not IS_VERCEL:
+        threading.Thread(target=scheduler, daemon=True).start()
+
     app.run(host="0.0.0.0", port=int(os.environ.get("PORT", 8080)), debug=False)
