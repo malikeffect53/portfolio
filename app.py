@@ -2042,6 +2042,16 @@ def html(name):
     return r
 
 
+@app.get("/debug-route")
+def debug_route():
+    return jsonify({
+        "path": request.path,
+        "args": dict(request.args),
+        "environ_path": request.environ.get("PATH_INFO"),
+        "environ_qs": request.environ.get("QUERY_STRING")
+    })
+
+
 @app.get("/")
 def home():
     return html("index.html")
