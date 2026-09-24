@@ -2044,14 +2044,6 @@ def html(name):
 
 @app.get("/")
 def home():
-    if request.args.get("debug") == "1":
-        return jsonify({
-            "path": request.path,
-            "environ_PATH_INFO": request.environ.get("PATH_INFO"),
-            "environ_REQUEST_URI": request.environ.get("REQUEST_URI"),
-            "environ_RAW_URI": request.environ.get("RAW_URI"),
-            "headers": dict(request.headers)
-        })
     return html("index.html")
 
 

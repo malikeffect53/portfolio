@@ -1,6 +1,7 @@
 import os
 import sys
 import traceback
+import urllib.parse
 
 # Add project root directory to sys.path so app and seed can be imported
 ROOT_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -32,14 +33,12 @@ else:
             self.wsgi_app = wsgi_app
 
         def __call__(self, environ, start_response):
-            req_uri = environ.get("REQUEST_URI") or environ.get("RAW_URI")
-            matched = environ.get("HTTP_X_MATCHED_PATH")
-            if req_uri:
-                clean_path = req_uri.split("?")[0]
-                if clean_path and clean_path not in ("/api/index", "/api/index.py"):
-                    environ["PATH_INFO"] = clean_path
-            elif matched and matched not in ("/api/index", "/api/index.py"):
-                environ["PATH_INFO"] = matched
+            qs = environ.get("QUERY_STRING", "")
+            query = urllib.parse.parse_qs(qs, keep_blank_values=True)
+            if "__path__" in query:
+                val = query.pop("__path__")[0]
+                environ["PATH_INFO"] = "/" + val.lstrip("/")
+                environ["QUERY_STRING"] = urllib.parse.urlencode(query, doseq=True)
             elif environ.get("PATH_INFO") in ("/api/index", "/api/index.py"):
                 environ["PATH_INFO"] = "/"
             return self.wsgi_app(environ, start_response)
