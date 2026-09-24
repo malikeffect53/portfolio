@@ -32,8 +32,13 @@ else:
             self.wsgi_app = wsgi_app
 
         def __call__(self, environ, start_response):
+            req_uri = environ.get("REQUEST_URI") or environ.get("RAW_URI")
             matched = environ.get("HTTP_X_MATCHED_PATH")
-            if matched and matched not in ("/api/index", "/api/index.py"):
+            if req_uri:
+                clean_path = req_uri.split("?")[0]
+                if clean_path and clean_path not in ("/api/index", "/api/index.py"):
+                    environ["PATH_INFO"] = clean_path
+            elif matched and matched not in ("/api/index", "/api/index.py"):
                 environ["PATH_INFO"] = matched
             elif environ.get("PATH_INFO") in ("/api/index", "/api/index.py"):
                 environ["PATH_INFO"] = "/"
