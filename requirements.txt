@@ -1,5 +1,7 @@
 Flask>=3.0
 gunicorn>=22.0
 openpyxl>=3.1
+pg8000>=1.31.5
 # Optional: uncomment to copy every backup to external (S3-compatible) storage
 # boto3>=1.34
+

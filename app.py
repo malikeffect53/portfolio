@@ -6,8 +6,23 @@ One small Python program that serves:
   /private     the read-only viewer portal (viewers + owner preview)
   /api/...     the data behind all three
 """
-import csv, datetime as dt, hashlib, hmac, io, json, os, re, secrets, shutil, sqlite3, threading, time, zipfile
+import base64, csv, datetime as dt, hashlib, hmac, io, json, mimetypes, os, re, secrets, shutil, sqlite3, ssl, threading, time, urllib.parse, zipfile
 from urllib.parse import urlparse
+
+# Auto-load .env file if present (local dev only)
+_env_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), ".env")
+if os.path.exists(_env_path):
+    try:
+        with open(_env_path, encoding="utf-8") as _ef:
+            for _line in _ef:
+                _line = _line.strip()
+                if _line and not _line.startswith("#") and "=" in _line:
+                    _k, _v = _line.split("=", 1)
+                    _k, _v = _k.strip(), _v.strip()
+                    if _k and _k not in os.environ:
+                        os.environ[_k] = _v
+    except Exception:
+        pass
 
 from flask import Flask, Response, abort, g, jsonify, redirect, request, send_file, send_from_directory, session
 from werkzeug.middleware.proxy_fix import ProxyFix
@@ -16,14 +31,25 @@ from werkzeug.security import check_password_hash, generate_password_hash
 from seed import seed_items
 
 BASE = os.path.dirname(os.path.abspath(__file__))
-DATA = os.environ.get("DATA_DIR", os.path.join(BASE, "data"))
+IS_VERCEL = bool(os.environ.get("VERCEL"))
+DATA = os.environ.get("DATA_DIR", "/tmp/data" if IS_VERCEL else os.path.join(BASE, "data"))
 DB_PATH = os.path.join(DATA, "site.db")
+DATABASE_URL = os.environ.get("DATABASE_URL")
+SUPABASE_URL = os.environ.get("SUPABASE_URL")
+SUPABASE_KEY = os.environ.get("SUPABASE_KEY")
+SITE_DOMAIN = os.environ.get("SITE_DOMAIN", "")
+ALLOWED_ORIGIN = os.environ.get("ALLOWED_ORIGIN", "")
 UP_PUB = os.path.join(DATA, "uploads", "public")
 UP_PRIV = os.path.join(DATA, "uploads", "private")
 BK = os.path.join(DATA, "backups")
 STATIC = os.path.join(BASE, "static")
+STATIC_UPLOADS = os.path.join(STATIC, "uploads")
 for d in (UP_PUB, UP_PRIV, BK):
-    os.makedirs(d, exist_ok=True)
+    try:
+        os.makedirs(d, exist_ok=True)
+    except OSError:
+        pass
+
 
 PUBLIC_KINDS = ["project", "gallery", "journey", "achievement", "post"]
 ARCHIVE = {"detail": "Full Details", "special": "Special Achievements", "artwork": "Private Artwork",
@@ -66,19 +92,33 @@ def secret():
         return s
     p = os.path.join(DATA, "secret.key")
     if not os.path.exists(p):
-        with open(p, "w") as f:
-            f.write(secrets.token_hex(32))
-        os.chmod(p, 0o600)
-    return open(p).read().strip()
+        try:
+            with open(p, "w") as f:
+                f.write(secrets.token_hex(32))
+            os.chmod(p, 0o600)
+        except OSError:
+            return "ephemeral-secret-key-please-set-SECRET_KEY-in-vercel"
+    try:
+        return open(p).read().strip()
+    except OSError:
+        return "ephemeral-secret-key-please-set-SECRET_KEY-in-vercel"
 
 
 app = Flask(__name__, static_folder=None)
 if os.environ.get("TRUST_PROXY", "1") == "1":
     app.wsgi_app = ProxyFix(app.wsgi_app, x_for=1, x_proto=1, x_host=1)
+
+IS_PROD = IS_VERCEL or os.environ.get("HTTPS", "0") == "1"
 app.config.update(
-    SECRET_KEY=secret(), SESSION_COOKIE_HTTPONLY=True, SESSION_COOKIE_SAMESITE="Lax",
-    SESSION_COOKIE_SECURE=os.environ.get("HTTPS", "0") == "1",
-    MAX_CONTENT_LENGTH=25 * 1024 * 1024, PERMANENT_SESSION_LIFETIME=dt.timedelta(days=7))
+    SECRET_KEY=secret(),
+    SESSION_COOKIE_HTTPONLY=True,
+    SESSION_COOKIE_SAMESITE="Lax",
+    SESSION_COOKIE_SECURE=IS_PROD,
+    MAX_CONTENT_LENGTH=25 * 1024 * 1024,
+    PERMANENT_SESSION_LIFETIME=dt.timedelta(days=7),
+)
+if os.environ.get("SESSION_COOKIE_DOMAIN"):
+    app.config["SESSION_COOKIE_DOMAIN"] = os.environ.get("SESSION_COOKIE_DOMAIN")
 
 # ------------------------------------------------------------------ database
 SCHEMA = """
@@ -99,17 +139,159 @@ CREATE TABLE IF NOT EXISTS passcodes(id INTEGER PRIMARY KEY, label TEXT, role TE
 CREATE TABLE IF NOT EXISTS settings(k TEXT PRIMARY KEY, v TEXT);
 CREATE TABLE IF NOT EXISTS backups(id INTEGER PRIMARY KEY, ts TEXT, name TEXT UNIQUE, kind TEXT, size INT, status TEXT, note TEXT);
 CREATE TABLE IF NOT EXISTS media(id INTEGER PRIMARY KEY, name TEXT UNIQUE, original_name TEXT, ext TEXT, size INT, is_private INT DEFAULT 0,
-  title TEXT DEFAULT '', caption TEXT DEFAULT '', alt TEXT DEFAULT '', project TEXT DEFAULT '', pos INTEGER DEFAULT 0, created TEXT);
+  title TEXT DEFAULT '', caption TEXT DEFAULT '', alt TEXT DEFAULT '', project TEXT DEFAULT '', pos INTEGER DEFAULT 0, created TEXT, content_b64 TEXT DEFAULT '');
 CREATE INDEX IF NOT EXISTS ix_media_ext ON media(ext);
 """
 
 
+class PgRow(dict):
+    """Row wrapper that supports both dict indexing (row['col']) and positional indexing (row[0])."""
+    def __init__(self, cols, values):
+        super().__init__(zip(cols, values))
+        self._values = tuple(values)
+
+    def __getitem__(self, key):
+        if isinstance(key, int):
+            return self._values[key]
+        return super().__getitem__(key)
+
+
+class PgCursorWrapper:
+    def __init__(self, cursor, conn):
+        self._cur = cursor
+        self._conn = conn
+        self.lastrowid = None
+
+    def execute(self, sql, params=None):
+        if params is None:
+            params = ()
+        elif not isinstance(params, (list, tuple)):
+            params = tuple(params)
+        pg_sql, needs_ret_id = self._transform_sql(sql)
+        self._cur.execute(pg_sql, params)
+        if needs_ret_id:
+            try:
+                row = self._cur.fetchone()
+                if row:
+                    self.lastrowid = row[0]
+            except Exception:
+                self.lastrowid = None
+        return self
+
+    def executemany(self, sql, seq_of_params):
+        pg_sql, _ = self._transform_sql(sql)
+        self._cur.executemany(pg_sql, seq_of_params)
+        return self
+
+    def fetchone(self):
+        r = self._cur.fetchone()
+        if not r or not self._cur.description:
+            return None
+        cols = [d[0] for d in self._cur.description]
+        return PgRow(cols, r)
+
+    def fetchall(self):
+        if not self._cur.description:
+            return []
+        cols = [d[0] for d in self._cur.description]
+        return [PgRow(cols, r) for r in self._cur.fetchall()]
+
+    def __iter__(self):
+        return self
+
+    def __next__(self):
+        r = self.fetchone()
+        if r is None:
+            raise StopIteration
+        return r
+
+    @property
+    def rowcount(self):
+        return self._cur.rowcount
+
+    def close(self):
+        self._cur.close()
+
+    def _transform_sql(self, sql):
+        s = sql.strip()
+        # INSERT OR IGNORE
+        if re.match(r"^INSERT\s+OR\s+IGNORE\s+INTO\s+", s, re.IGNORECASE):
+            s = re.sub(r"^INSERT\s+OR\s+IGNORE\s+INTO\s+", "INSERT INTO ", s, flags=re.IGNORECASE)
+            if "ON CONFLICT" not in s.upper():
+                s = s.rstrip(";") + " ON CONFLICT DO NOTHING"
+        # INSERT OR REPLACE INTO media
+        elif re.match(r"^INSERT\s+OR\s+REPLACE\s+INTO\s+media\b", s, re.IGNORECASE):
+            s = re.sub(r"^INSERT\s+OR\s+REPLACE\s+INTO\s+media", "INSERT INTO media", s, flags=re.IGNORECASE)
+            if "ON CONFLICT" not in s.upper():
+                s = s.rstrip(";") + " ON CONFLICT(name) DO UPDATE SET original_name=EXCLUDED.original_name, ext=EXCLUDED.ext, size=EXCLUDED.size, is_private=EXCLUDED.is_private, created=EXCLUDED.created, content_b64=EXCLUDED.content_b64"
+
+        needs_returning = False
+        if re.match(r"^INSERT\s+INTO\s+", s, re.IGNORECASE) and not re.match(r"^INSERT\s+INTO\s+settings\b", s, re.IGNORECASE):
+            if "RETURNING" not in s.upper():
+                needs_returning = True
+                s = s.rstrip(";") + " RETURNING id"
+
+        # Convert SQLite ? parameter placeholders to PostgreSQL %s
+        s = "%s".join(s.split("?"))
+        return s, needs_returning
+
+
+class PgConnectionWrapper:
+    def __init__(self, raw_conn):
+        self._conn = raw_conn
+
+    def cursor(self):
+        return PgCursorWrapper(self._conn.cursor(), self._conn)
+
+    def execute(self, sql, params=()):
+        cur = self.cursor()
+        cur.execute(sql, params)
+        return cur
+
+    def commit(self):
+        self._conn.commit()
+
+    def rollback(self):
+        self._conn.rollback()
+
+    def close(self):
+        self._conn.close()
+
+
+_pg_unreachable_until = 0
+
+
 def connect():
+    global _pg_unreachable_until
+    now_ts = time.time()
+    if DATABASE_URL and now_ts > _pg_unreachable_until:
+        try:
+            import pg8000.dbapi
+            u = urlparse(DATABASE_URL)
+            ssl_ctx = ssl.create_default_context()
+            ssl_ctx.check_hostname = False
+            ssl_ctx.verify_mode = ssl.CERT_NONE
+            # Default to transaction mode pooler (6543) for Supabase serverless stability
+            port = u.port or (6543 if "pooler.supabase.com" in (u.hostname or "") else 5432)
+            raw_conn = pg8000.dbapi.connect(
+                user=urllib.parse.unquote(u.username or "postgres"),
+                password=urllib.parse.unquote(u.password or ""),
+                host=u.hostname,
+                port=port,
+                database=u.path.lstrip("/") or "postgres",
+                ssl_context=ssl_ctx,
+                timeout=5,
+            )
+            return PgConnectionWrapper(raw_conn)
+        except Exception as e:
+            _pg_unreachable_until = now_ts + 300
+            print(f"[DB] PostgreSQL connection to Supabase failed: {e}. Falling back to SQLite (will retry in 5m).", flush=True)
     c = sqlite3.connect(DB_PATH, timeout=15)
     c.row_factory = sqlite3.Row
     c.execute("PRAGMA journal_mode=WAL")
     c.execute("PRAGMA foreign_keys=ON")
     return c
+
 
 
 def db():
@@ -141,31 +323,49 @@ def ex(sql, *a):
 
 
 def sync_media(c):
-    for is_priv, folder in ((0, UP_PUB), (1, UP_PRIV)):
+    folders = [(0, UP_PUB), (1, UP_PRIV)]
+    if os.path.exists(STATIC_UPLOADS):
+        folders.append((0, STATIC_UPLOADS))
+    for is_priv, folder in folders:
         if os.path.exists(folder):
             for fname in os.listdir(folder):
                 fpath = os.path.join(folder, fname)
                 if os.path.isfile(fpath) and NAME_RE.match(fname):
-                    if not c.execute("SELECT 1 FROM media WHERE name=?", (fname,)).fetchone():
-                        sz = os.path.getsize(fpath)
-                        ext = fname.rsplit(".", 1)[-1].lower() if "." in fname else ""
-                        c.execute("INSERT OR IGNORE INTO media(name, original_name, ext, size, is_private, created) VALUES(?,?,?,?,?,?)",
-                                  (fname, fname, ext, sz, is_priv, now()))
+                    row = c.execute("SELECT content_b64 FROM media WHERE name=?", (fname,)).fetchone()
+                    sz = os.path.getsize(fpath)
+                    ext = fname.rsplit(".", 1)[-1].lower() if "." in fname else ""
+                    if not row:
+                        b64 = ""
+                        try:
+                            with open(fpath, "rb") as mf:
+                                b64 = base64.b64encode(mf.read()).decode("ascii")
+                        except Exception:
+                            pass
+                        c.execute("INSERT OR IGNORE INTO media(name, original_name, ext, size, is_private, created, content_b64) VALUES(?,?,?,?,?,?,?)",
+                                  (fname, fname, ext, sz, is_priv, now(), b64))
+                    elif not row[0]:
+                        try:
+                            with open(fpath, "rb") as mf:
+                                b64 = base64.b64encode(mf.read()).decode("ascii")
+                                c.execute("UPDATE media SET content_b64=? WHERE name=?", (b64, fname))
+                        except Exception:
+                            pass
 
 
 def init_db():
     c = connect()
-    c.executescript(SCHEMA)
-    for col, ctype in (("title", "TEXT DEFAULT ''"), ("caption", "TEXT DEFAULT ''"), ("alt", "TEXT DEFAULT ''"), ("project", "TEXT DEFAULT ''"), ("pos", "INTEGER DEFAULT 0")):
-        try:
-            c.execute(f"ALTER TABLE media ADD COLUMN {col} {ctype}")
-        except sqlite3.OperationalError:
-            pass
-    for col, ctype in (("updated", "TEXT DEFAULT ''"), ("email", "TEXT DEFAULT ''")):
-        try:
-            c.execute(f"ALTER TABLE users ADD COLUMN {col} {ctype}")
-        except sqlite3.OperationalError:
-            pass
+    if isinstance(c, sqlite3.Connection):
+        c.executescript(SCHEMA)
+        for col, ctype in (("title", "TEXT DEFAULT ''"), ("caption", "TEXT DEFAULT ''"), ("alt", "TEXT DEFAULT ''"), ("project", "TEXT DEFAULT ''"), ("pos", "INTEGER DEFAULT 0"), ("content_b64", "TEXT DEFAULT ''")):
+            try:
+                c.execute(f"ALTER TABLE media ADD COLUMN {col} {ctype}")
+            except sqlite3.OperationalError:
+                pass
+        for col, ctype in (("updated", "TEXT DEFAULT ''"), ("email", "TEXT DEFAULT ''")):
+            try:
+                c.execute(f"ALTER TABLE users ADD COLUMN {col} {ctype}")
+            except sqlite3.OperationalError:
+                pass
     env_pw = os.environ.get("OWNER_PASSWORD", "").strip()
     if not c.execute("SELECT 1 FROM users WHERE role='owner'").fetchone():
         pw = env_pw or secrets.token_urlsafe(12)
@@ -185,6 +385,7 @@ def init_db():
     c.commit()
     sync_backups(c)
     c.close()
+
 
 
 def setting(k, default=None):
@@ -253,8 +454,33 @@ def rl_add(key):
 OPEN_POST = {"/api/login", "/api/logout", "/api/track", "/api/contact", "/api/feedback", "/api/private/unlock"}
 
 
+def _is_origin_allowed(origin):
+    if not origin:
+        return False
+    allowed_list = [o.strip() for o in ALLOWED_ORIGIN.split(",") if o.strip()]
+    if SITE_DOMAIN:
+        allowed_list.extend([f"https://{SITE_DOMAIN}", f"http://{SITE_DOMAIN}"])
+    if os.environ.get("VERCEL_URL"):
+        allowed_list.append(f"https://{os.environ.get('VERCEL_URL')}")
+    if "*" in allowed_list or origin in allowed_list:
+        return True
+    clean = origin.replace("https://", "").replace("http://", "").split(":")[0]
+    if clean.endswith(".vercel.app") or clean in ("localhost", "127.0.0.1"):
+        return True
+    return False
+
+
 @app.before_request
 def guard():
+    if request.method == "OPTIONS":
+        resp = Response()
+        origin = request.headers.get("Origin", "")
+        if _is_origin_allowed(origin):
+            resp.headers["Access-Control-Allow-Origin"] = origin
+            resp.headers["Access-Control-Allow-Credentials"] = "true"
+            resp.headers["Access-Control-Allow-Methods"] = "GET, POST, PUT, DELETE, OPTIONS"
+            resp.headers["Access-Control-Allow-Headers"] = "Content-Type, Authorization, X-CSRF"
+        return resp
     if request.method in ("POST", "PUT", "DELETE", "PATCH") and request.path.startswith("/api/") and request.path not in OPEN_POST:
         if session.get("uid") and not hmac.compare_digest(request.headers.get("X-CSRF", ""), session.get("csrf", "")):
             abort(403)
@@ -266,10 +492,16 @@ def headers(r):
     r.headers["X-Frame-Options"] = "SAMEORIGIN"
     r.headers["Referrer-Policy"] = "strict-origin-when-cross-origin"
     r.headers["Permissions-Policy"] = "camera=(), microphone=(), geolocation=()"
-    if os.environ.get("HTTPS", "0") == "1":
-        r.headers["Strict-Transport-Security"] = "max-age=31536000"
+    if IS_PROD:
+        r.headers["Strict-Transport-Security"] = "max-age=31536000; includeSubDomains"
     if request.path.startswith(("/api/admin", "/api/private", "/api/me")):
         r.headers["Cache-Control"] = "no-store"
+    origin = request.headers.get("Origin")
+    if origin and _is_origin_allowed(origin):
+        r.headers["Access-Control-Allow-Origin"] = origin
+        r.headers["Access-Control-Allow-Credentials"] = "true"
+        r.headers["Access-Control-Allow-Methods"] = "GET, POST, PUT, DELETE, OPTIONS"
+        r.headers["Access-Control-Allow-Headers"] = "Content-Type, Authorization, X-CSRF"
     return r
 
 
@@ -500,11 +732,19 @@ def upload():
     else:
         raise ValueError("This file type isn't allowed. Images (jpg, png, webp, gif) are allowed everywhere; documents (pdf, docx, xlsx, txt, csv, pptx) only in the private archive.")
     name = secrets.token_hex(16) + "." + ext
-    f.save(os.path.join(UP_PRIV if private else UP_PUB, name))
-    size = os.path.getsize(os.path.join(UP_PRIV if private else UP_PUB, name))
     orig_name = f.filename[:120]
-    ex("INSERT OR REPLACE INTO media(name, original_name, ext, size, is_private, created) VALUES(?,?,?,?,?,?)",
-       name, orig_name, ext, size, 1 if private else 0, now())
+    raw_bytes = f.read()
+    size = len(raw_bytes)
+    content_b64 = base64.b64encode(raw_bytes).decode("ascii")
+    dest_dir = UP_PRIV if private else UP_PUB
+    try:
+        os.makedirs(dest_dir, exist_ok=True)
+        with open(os.path.join(dest_dir, name), "wb") as df:
+            df.write(raw_bytes)
+    except OSError:
+        pass
+    ex("INSERT OR REPLACE INTO media(name, original_name, ext, size, is_private, created, content_b64) VALUES(?,?,?,?,?,?,?)",
+       name, orig_name, ext, size, 1 if private else 0, now(), content_b64)
     log("File uploaded", orig_name, "archive" if private else "portfolio")
     return jsonify(url=(f"/api/private/file/{name}" if private else f"/uploads/{name}"), name=orig_name, size=size)
 
@@ -516,8 +756,29 @@ NAME_RE = re.compile(r"^[a-f0-9]{32}\.[a-z0-9]{2,5}$")
 def public_file(name):
     if not NAME_RE.match(name):
         abort(404)
-    r = send_from_directory(UP_PUB, name, max_age=2592000)
-    return r
+    disk_path = os.path.join(UP_PUB, name)
+    if os.path.exists(disk_path):
+        return send_from_directory(UP_PUB, name, max_age=2592000)
+    static_upload = os.path.join(STATIC_UPLOADS, name)
+    if os.path.exists(static_upload):
+        return send_from_directory(STATIC_UPLOADS, name, max_age=2592000)
+    row = q1("SELECT original_name, ext, content_b64 FROM media WHERE name=? AND is_private=0", name)
+    if not row or not row.get("content_b64"):
+        abort(404)
+    try:
+        raw_bytes = base64.b64decode(row["content_b64"])
+        try:
+            os.makedirs(UP_PUB, exist_ok=True)
+            with open(disk_path, "wb") as f:
+                f.write(raw_bytes)
+        except OSError:
+            pass
+        mime = mimetypes.guess_type(name)[0] or "application/octet-stream"
+        resp = Response(raw_bytes, mimetype=mime)
+        resp.headers["Cache-Control"] = "public, max-age=2592000"
+        return resp
+    except Exception:
+        abort(404)
 
 
 # ------------------------------------------------------------------ media library & tools
@@ -1042,8 +1303,15 @@ def private_file(name):
     arch_status = setting("archive_status", "enabled")
     if arch_status in ("disabled", "maintenance") and u.get("role") != "owner":
         abort(403)
-    if not NAME_RE.match(name) or not os.path.exists(os.path.join(UP_PRIV, name)):
+    if not NAME_RE.match(name):
         abort(404)
+    disk_path = os.path.join(UP_PRIV, name)
+    file_on_disk = os.path.exists(disk_path)
+    row = None
+    if not file_on_disk:
+        row = q1("SELECT original_name, ext, content_b64 FROM media WHERE name=?", name)
+        if not row or not row.get("content_b64"):
+            abort(404)
     rank, sections, full, _ = viewer_ctx(u)
     rows = [item_out(r) for r in db().execute("SELECT * FROM items WHERE kind IN (%s) AND data LIKE ?" % ",".join("?" * len(PRIVATE_KINDS)), PRIVATE_KINDS + [f"%{name}%"])]
     if not full:
@@ -1053,9 +1321,29 @@ def private_file(name):
     dl_requested = request.args.get("dl") == "1"
     allow_dl = full or any((r.get("data", {}).get("allow_download") or False) for r in rows)
     as_attachment = (ext not in IMG_EXT and dl_requested and allow_dl)
-    resp = send_from_directory(UP_PRIV, name, as_attachment=as_attachment)
-    resp.headers["Cache-Control"] = "private, no-store"
-    return resp
+
+    if file_on_disk:
+        resp = send_from_directory(UP_PRIV, name, as_attachment=as_attachment)
+        resp.headers["Cache-Control"] = "private, no-store"
+        return resp
+
+    try:
+        raw_bytes = base64.b64decode(row["content_b64"])
+        try:
+            os.makedirs(UP_PRIV, exist_ok=True)
+            with open(disk_path, "wb") as f:
+                f.write(raw_bytes)
+        except OSError:
+            pass
+        mime = mimetypes.guess_type(name)[0] or "application/octet-stream"
+        resp = Response(raw_bytes, mimetype=mime)
+        if as_attachment:
+            orig = row.get("original_name") or name
+            resp.headers["Content-Disposition"] = f'attachment; filename="{orig}"'
+        resp.headers["Cache-Control"] = "private, no-store"
+        return resp
+    except Exception:
+        abort(404)
 
 
 # ------------------------------------------------------------------ archive admin settings
@@ -1446,19 +1734,28 @@ def make_backup(kind="manual", note=""):
         c = connect()
         status, msg = "ok", note
         try:
-            if os.path.exists(tmp):
-                os.remove(tmp)
-            dest = sqlite3.connect(tmp)
-            c.backup(dest)
-            dest.close()
-            with zipfile.ZipFile(path, "w", zipfile.ZIP_DEFLATED) as z:
-                z.write(tmp, "site.db")
-                for root, _, files in os.walk(os.path.join(DATA, "uploads")):
-                    for f in files:
-                        full = os.path.join(root, f)
-                        z.write(full, os.path.relpath(full, DATA))
-                z.writestr("manifest.json", json.dumps({"created": ts.isoformat(), "kind": kind, "version": 1}))
-            os.remove(tmp)
+            if hasattr(c, "backup"):
+                if os.path.exists(tmp):
+                    os.remove(tmp)
+                dest = sqlite3.connect(tmp)
+                c.backup(dest)
+                dest.close()
+                with zipfile.ZipFile(path, "w", zipfile.ZIP_DEFLATED) as z:
+                    z.write(tmp, "site.db")
+                    for root, _, files in os.walk(os.path.join(DATA, "uploads")):
+                        for f in files:
+                            full = os.path.join(root, f)
+                            z.write(full, os.path.relpath(full, DATA))
+                    z.writestr("manifest.json", json.dumps({"created": ts.isoformat(), "kind": kind, "version": 1}))
+                if os.path.exists(tmp):
+                    os.remove(tmp)
+            else:
+                with zipfile.ZipFile(path, "w", zipfile.ZIP_DEFLATED) as z:
+                    for root, _, files in os.walk(os.path.join(DATA, "uploads")):
+                        for f in files:
+                            full = os.path.join(root, f)
+                            z.write(full, os.path.relpath(full, DATA))
+                    z.writestr("manifest.json", json.dumps({"created": ts.isoformat(), "kind": kind, "version": 1, "backend": "supabase"}))
             ok, extra = upload_external(path)
             msg = (msg + " " + extra).strip()
             if not ok:
@@ -1651,7 +1948,7 @@ def spa(p):
 
 
 init_db()
-if not os.environ.get("NO_SCHEDULER"):
+if not os.environ.get("NO_SCHEDULER") and not IS_VERCEL:
     threading.Thread(target=scheduler, daemon=True).start()
 
 if __name__ == "__main__":
