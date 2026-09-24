@@ -34,7 +34,7 @@ BASE = os.path.dirname(os.path.abspath(__file__))
 IS_VERCEL = bool(os.environ.get("VERCEL"))
 DATA = os.environ.get("DATA_DIR", "/tmp/data" if IS_VERCEL else os.path.join(BASE, "data"))
 DB_PATH = os.path.join(DATA, "site.db")
-DATABASE_URL = os.environ.get("DATABASE_URL")
+DATABASE_URL = os.environ.get("DATABASE_URL") or os.environ.get("POSTGRES_URL") or os.environ.get("SUPABASE_DB_URL")
 SUPABASE_URL = os.environ.get("SUPABASE_URL")
 SUPABASE_KEY = os.environ.get("SUPABASE_KEY")
 SITE_DOMAIN = os.environ.get("SITE_DOMAIN", "")
@@ -44,7 +44,7 @@ UP_PRIV = os.path.join(DATA, "uploads", "private")
 BK = os.path.join(DATA, "backups")
 STATIC = os.path.join(BASE, "static")
 STATIC_UPLOADS = os.path.join(STATIC, "uploads")
-for d in (UP_PUB, UP_PRIV, BK):
+for d in (DATA, UP_PUB, UP_PRIV, BK):
     try:
         os.makedirs(d, exist_ok=True)
     except OSError:
@@ -87,7 +87,7 @@ def today():
 
 
 def secret():
-    s = os.environ.get("SECRET_KEY")
+    s = os.environ.get("SECRET_KEY") or os.environ.get("SESSION_SECRET") or os.environ.get("FLASK_SECRET_KEY")
     if s:
         return s
     p = os.path.join(DATA, "secret.key")
@@ -264,15 +264,18 @@ _pg_unreachable_until = 0
 def connect():
     global _pg_unreachable_until
     now_ts = time.time()
-    if DATABASE_URL and now_ts > _pg_unreachable_until:
+    db_url = DATABASE_URL or os.environ.get("POSTGRES_URL") or os.environ.get("SUPABASE_DB_URL")
+    if db_url and now_ts > _pg_unreachable_until:
         try:
             import pg8000.dbapi
-            u = urlparse(DATABASE_URL)
+            u = urlparse(db_url)
             ssl_ctx = ssl.create_default_context()
             ssl_ctx.check_hostname = False
             ssl_ctx.verify_mode = ssl.CERT_NONE
-            # Default to transaction mode pooler (6543) for Supabase serverless stability
+            # Transaction mode pooler (6543) is essential for Vercel serverless functions
             port = u.port or (6543 if "pooler.supabase.com" in (u.hostname or "") else 5432)
+            if IS_VERCEL and "pooler.supabase.com" in (u.hostname or "") and port == 5432:
+                port = 6543
             raw_conn = pg8000.dbapi.connect(
                 user=urllib.parse.unquote(u.username or "postgres"),
                 password=urllib.parse.unquote(u.password or ""),
@@ -280,12 +283,12 @@ def connect():
                 port=port,
                 database=u.path.lstrip("/") or "postgres",
                 ssl_context=ssl_ctx,
-                timeout=5,
+                timeout=15,
             )
             return PgConnectionWrapper(raw_conn)
         except Exception as e:
-            _pg_unreachable_until = now_ts + 300
-            print(f"[DB] PostgreSQL connection to Supabase failed: {e}. Falling back to SQLite (will retry in 5m).", flush=True)
+            _pg_unreachable_until = now_ts + (5 if IS_VERCEL else 300)
+            print(f"[DB] PostgreSQL connection to Supabase failed: {e}. Falling back to SQLite.", flush=True)
     c = sqlite3.connect(DB_PATH, timeout=15)
     c.row_factory = sqlite3.Row
     c.execute("PRAGMA journal_mode=WAL")
@@ -353,38 +356,49 @@ def sync_media(c):
 
 
 def init_db():
-    c = connect()
-    if isinstance(c, sqlite3.Connection):
-        c.executescript(SCHEMA)
-        for col, ctype in (("title", "TEXT DEFAULT ''"), ("caption", "TEXT DEFAULT ''"), ("alt", "TEXT DEFAULT ''"), ("project", "TEXT DEFAULT ''"), ("pos", "INTEGER DEFAULT 0"), ("content_b64", "TEXT DEFAULT ''")):
-            try:
-                c.execute(f"ALTER TABLE media ADD COLUMN {col} {ctype}")
-            except sqlite3.OperationalError:
-                pass
-        for col, ctype in (("updated", "TEXT DEFAULT ''"), ("email", "TEXT DEFAULT ''")):
-            try:
-                c.execute(f"ALTER TABLE users ADD COLUMN {col} {ctype}")
-            except sqlite3.OperationalError:
-                pass
-    env_pw = os.environ.get("OWNER_PASSWORD", "").strip()
-    if not c.execute("SELECT 1 FROM users WHERE role='owner'").fetchone():
-        pw = env_pw or secrets.token_urlsafe(12)
-        c.execute("INSERT INTO users(username,name,role,pw,sections,created) VALUES('owner','Burhanuddin','owner',?,'[]',?)",
-                  (generate_password_hash(pw), now()))
-        if not env_pw:
-            print("=" * 60 + f"\n FIRST RUN. Owner login:\n   username: owner\n   password: {pw}\n"
-                  " Change it in Admin > Settings.\n" + "=" * 60, flush=True)
-    elif env_pw:
-        c.execute("UPDATE users SET pw=? WHERE role='owner'", (generate_password_hash(env_pw),))
-    if not c.execute("SELECT 1 FROM items LIMIT 1").fetchone():
-        for it in seed_items():
-            c.execute("INSERT INTO items(kind,slug,title,data,status,access,pos,created,updated) VALUES(?,?,?,?,?,?,?,?,?)",
-                      (it["kind"], it["slug"], it["title"], json.dumps(it["data"], ensure_ascii=False),
-                       "published", "A", it.get("pos", 0), now(), now()))
-    sync_media(c)
-    c.commit()
-    sync_backups(c)
-    c.close()
+    try:
+        c = connect()
+    except Exception as e:
+        print(f"[WARN] init_db connect failed: {e}", flush=True)
+        return
+    try:
+        if isinstance(c, sqlite3.Connection):
+            c.executescript(SCHEMA)
+            for col, ctype in (("title", "TEXT DEFAULT ''"), ("caption", "TEXT DEFAULT ''"), ("alt", "TEXT DEFAULT ''"), ("project", "TEXT DEFAULT ''"), ("pos", "INTEGER DEFAULT 0"), ("content_b64", "TEXT DEFAULT ''")):
+                try:
+                    c.execute(f"ALTER TABLE media ADD COLUMN {col} {ctype}")
+                except sqlite3.OperationalError:
+                    pass
+            for col, ctype in (("updated", "TEXT DEFAULT ''"), ("email", "TEXT DEFAULT ''")):
+                try:
+                    c.execute(f"ALTER TABLE users ADD COLUMN {col} {ctype}")
+                except sqlite3.OperationalError:
+                    pass
+        env_pw = os.environ.get("OWNER_PASSWORD", "").strip()
+        if not c.execute("SELECT 1 FROM users WHERE role='owner'").fetchone():
+            pw = env_pw or secrets.token_urlsafe(12)
+            c.execute("INSERT INTO users(username,name,role,pw,sections,created) VALUES('owner','Burhanuddin','owner',?,'[]',?)",
+                      (generate_password_hash(pw), now()))
+            if not env_pw:
+                print("=" * 60 + f"\n FIRST RUN. Owner login:\n   username: owner\n   password: {pw}\n"
+                      " Change it in Admin > Settings.\n" + "=" * 60, flush=True)
+        elif env_pw:
+            c.execute("UPDATE users SET pw=? WHERE role='owner'", (generate_password_hash(env_pw),))
+        if not c.execute("SELECT 1 FROM items LIMIT 1").fetchone():
+            for it in seed_items():
+                c.execute("INSERT INTO items(kind,slug,title,data,status,access,pos,created,updated) VALUES(?,?,?,?,?,?,?,?,?)",
+                          (it["kind"], it["slug"], it["title"], json.dumps(it["data"], ensure_ascii=False),
+                           "published", "A", it.get("pos", 0), now(), now()))
+        sync_media(c)
+        c.commit()
+        sync_backups(c)
+    except Exception as e:
+        print(f"[WARN] init_db execution failed: {e}", flush=True)
+    finally:
+        try:
+            c.close()
+        except Exception:
+            pass
 
 
 
@@ -1789,15 +1803,20 @@ def prune(c):
 
 def sync_backups(c):
     """Register any backup zip found in the backups folder that the database doesn't know about."""
-    known = {r[0] for r in c.execute("SELECT name FROM backups")}
-    for f in sorted(os.listdir(BK)):
-        if f.endswith(".zip") and f not in known:
-            m = re.match(r"backup-(\d{8})-(\d{6})-([a-z-]+)\.zip", f)
-            kind = m.group(3) if m else "imported"
-            ts = dt.datetime.strptime(m.group(1) + m.group(2), "%Y%m%d%H%M%S").strftime("%Y-%m-%dT%H:%M:%SZ") if m else now()
-            c.execute("INSERT OR IGNORE INTO backups(ts,name,kind,size,status,note) VALUES(?,?,?,?,?,?)",
-                      (ts, f, kind, os.path.getsize(os.path.join(BK, f)), "ok", "Found in backups folder"))
-    c.commit()
+    if not os.path.exists(BK):
+        return
+    try:
+        known = {r[0] for r in c.execute("SELECT name FROM backups")}
+        for f in sorted(os.listdir(BK)):
+            if f.endswith(".zip") and f not in known:
+                m = re.match(r"backup-(\d{8})-(\d{6})-([a-z-]+)\.zip", f)
+                kind = m.group(3) if m else "imported"
+                ts = dt.datetime.strptime(m.group(1) + m.group(2), "%Y%m%d%H%M%S").strftime("%Y-%m-%dT%H:%M:%SZ") if m else now()
+                c.execute("INSERT OR IGNORE INTO backups(ts,name,kind,size,status,note) VALUES(?,?,?,?,?,?)",
+                          (ts, f, kind, os.path.getsize(os.path.join(BK, f)), "ok", "Found in backups folder"))
+        c.commit()
+    except Exception as e:
+        print(f"[WARN] sync_backups failed: {e}", flush=True)
 
 
 def scheduler():
@@ -1947,7 +1966,11 @@ def spa(p):
     return html("index.html"), 404
 
 
-init_db()
+try:
+    init_db()
+except Exception as _e:
+    print(f"[WARN] Startup init_db failed: {_e}", flush=True)
+
 if not os.environ.get("NO_SCHEDULER") and not IS_VERCEL:
     threading.Thread(target=scheduler, daemon=True).start()
 

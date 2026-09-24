@@ -8,3 +8,6 @@ if ROOT_DIR not in sys.path:
 
 from app import app
 
+# Vercel Serverless WSGI callable
+handler = app
+
