@@ -26,8 +26,21 @@ if _import_error:
             mimetype="text/plain; charset=utf-8"
         )
 else:
+    class VercelPathFix:
+        """WSGI middleware to ensure Flask receives the true client request path from Vercel edge rewrites."""
+        def __init__(self, wsgi_app):
+            self.wsgi_app = wsgi_app
+
+        def __call__(self, environ, start_response):
+            matched = environ.get("HTTP_X_MATCHED_PATH")
+            if matched and matched not in ("/api/index", "/api/index.py"):
+                environ["PATH_INFO"] = matched
+            elif environ.get("PATH_INFO") in ("/api/index", "/api/index.py"):
+                environ["PATH_INFO"] = "/"
+            return self.wsgi_app(environ, start_response)
+
+    _flask_app.wsgi_app = VercelPathFix(_flask_app.wsgi_app)
     app = _flask_app
 
 # Vercel Serverless WSGI callable
 handler = app
-

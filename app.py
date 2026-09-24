@@ -2100,6 +2100,8 @@ def spa(p):
         return redirect("/work/gallery", 301)
     if first in PUBLIC_ROUTES:
         return html("index.html")
+    if p in ("api/index", "api/index.py", "index"):
+        return home()
     if first == "api":
         return jsonify(error="Not found."), 404
     return html("index.html"), 404
