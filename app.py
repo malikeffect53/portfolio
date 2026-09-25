@@ -382,28 +382,30 @@ def connect():
             db_url += ("&" if "?" in db_url else "?") + "sslmode=require"
 
     if now_ts > _pg_unreachable_until:
+        _attempt_errors = []
+
         # 1. Try psycopg2-binary
         try:
             import psycopg2
             raw_conn = psycopg2.connect(db_url, connect_timeout=15)
             _last_db_error = ""
             return PgConnectionWrapper(raw_conn)
-        except ImportError:
-            pass
+        except ImportError as e:
+            _attempt_errors.append(f"psycopg2 import failed: {e}")
         except Exception as e:
-            _last_db_error = f"psycopg2: {e}"
+            _attempt_errors.append(f"psycopg2: {e}")
             print(f"[DB] psycopg2 connection failed: {e}", flush=True)
 
         # 2. Try psycopg (v3)
         try:
             import psycopg
-            raw_conn = psycopg.connect(db_url, timeout=15)
+            raw_conn = psycopg.connect(db_url, connect_timeout=15)
             _last_db_error = ""
             return PgConnectionWrapper(raw_conn)
-        except ImportError:
-            pass
+        except ImportError as e:
+            _attempt_errors.append(f"psycopg import failed: {e}")
         except Exception as e:
-            _last_db_error = f"psycopg: {e}"
+            _attempt_errors.append(f"psycopg: {e}")
             print(f"[DB] psycopg connection failed: {e}", flush=True)
 
         # 3. Try pg8000 (pure-Python fallback)
@@ -416,10 +418,11 @@ def connect():
             port = u.port or (6543 if "pooler.supabase.com" in (u.hostname or "") else 5432)
             if IS_VERCEL and "pooler.supabase.com" in (u.hostname or "") and port == 5432:
                 port = 6543
+            host = (u.hostname or "").strip()
             raw_conn = pg8000.dbapi.connect(
                 user=urllib.parse.unquote(u.username or "postgres"),
                 password=urllib.parse.unquote(u.password or ""),
-                host=u.hostname,
+                host=host,
                 port=port,
                 database=u.path.lstrip("/") or "postgres",
                 ssl_context=ssl_ctx,
@@ -428,9 +431,12 @@ def connect():
             _last_db_error = ""
             return PgConnectionWrapper(raw_conn)
         except Exception as e:
-            _last_db_error = f"pg8000: {e}"
+            _attempt_errors.append(f"pg8000: {type(e).__name__}: {e}")
             _pg_unreachable_until = now_ts + 5
             print(f"[DB] PostgreSQL connection to Supabase failed: {e}.", flush=True)
+
+        _last_db_error = " | ".join(_attempt_errors)
+        print(f"[DB] All driver attempts failed: {_last_db_error}", flush=True)
 
     if not IS_VERCEL and os.path.exists(DB_PATH):
         c = sqlite3.connect(DB_PATH, timeout=15)
