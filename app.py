@@ -2037,6 +2037,19 @@ def backups_restore(i):
 
 # ------------------------------------------------------------------ pages
 def html(name):
+    target = os.path.join(STATIC, name)
+    if not os.path.exists(target):
+        for cand in [
+            os.path.join(os.getcwd(), "static", name),
+            os.path.join(os.path.dirname(os.path.abspath(__file__)), "static", name),
+        ]:
+            if os.path.exists(cand):
+                target = cand
+                break
+    if os.path.exists(target):
+        resp = send_file(target, mimetype="text/html")
+        resp.headers["Cache-Control"] = "no-cache"
+        return resp
     r = send_from_directory(STATIC, name)
     r.headers["Cache-Control"] = "no-cache"
     return r
@@ -2071,6 +2084,11 @@ def private_page():
     return html("private.html")
 
 
+@app.get("/static/<path:filename>")
+def static_files(filename):
+    return send_from_directory(STATIC, filename)
+
+
 @app.get("/robots.txt")
 def robots():
     return Response("User-agent: *\nDisallow: /admin\nDisallow: /private\nDisallow: /archive\nDisallow: /api/\n", mimetype="text/plain")
@@ -2100,14 +2118,18 @@ def api_health_db():
         return jsonify(status="error", database="disconnected", error=str(e)), 500
 
 
-PUBLIC_ROUTES = {"about", "journey", "work", "achievements", "blog", "contact"}
+PUBLIC_ROUTES = {"about", "journey", "work", "projects", "achievements", "blog", "contact"}
 
 
 @app.get("/<path:p>")
 def spa(p):
     first = p.strip("/").split("/")[0]
+    if first == "home":
+        return redirect("/", 301)
     if first == "gallery":
         return redirect("/work/gallery", 301)
+    if first in ("projects", "project"):
+        return redirect("/work", 301)
     if first in PUBLIC_ROUTES:
         return html("index.html")
     if p in ("api/index", "api/index.py", "index"):
@@ -2115,6 +2137,7 @@ def spa(p):
     if first == "api":
         return jsonify(error="Not found."), 404
     return html("index.html"), 404
+
 
 
 if __name__ == "__main__":
