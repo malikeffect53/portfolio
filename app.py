@@ -659,13 +659,7 @@ def headers(r):
     r.headers["X-Frame-Options"] = "SAMEORIGIN"
     r.headers["Referrer-Policy"] = "strict-origin-when-cross-origin"
     r.headers["Permissions-Policy"] = "camera=(), microphone=(), geolocation=()"
-    r.headers["X-Dbg-Path-Info"] = str(request.environ.get("PATH_INFO"))
-    r.headers["X-Dbg-Raw-Uri"] = str(request.environ.get("RAW_URI"))
-    r.headers["X-Dbg-Req-Uri"] = str(request.environ.get("REQUEST_URI"))
-    r.headers["X-Dbg-Fwd-Uri"] = str(request.environ.get("HTTP_X_FORWARDED_URI"))
-    r.headers["X-Dbg-Matched"] = str(request.environ.get("HTTP_X_MATCHED_PATH"))
-    r.headers["X-Dbg-Now-Matches"] = str(request.environ.get("HTTP_X_NOW_ROUTE_MATCHES"))
-    r.headers["X-Dbg-QS"] = str(request.environ.get("QUERY_STRING"))
+
 
     if IS_PROD:
         r.headers["Strict-Transport-Security"] = "max-age=31536000; includeSubDomains"
