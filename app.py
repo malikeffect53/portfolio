@@ -94,9 +94,48 @@ def secret():
     return "default-secret-key-please-set-SECRET_KEY-in-vercel-dashboard"
 
 
+class VercelPathFix:
+    """WSGI middleware ensuring Flask receives the true client request path from Vercel edge rewrites."""
+    def __init__(self, wsgi_app):
+        self.wsgi_app = wsgi_app
+
+    def __call__(self, environ, start_response):
+        qs = environ.get("QUERY_STRING", "")
+        if "__path__=" in qs:
+            params = urllib.parse.parse_qs(qs, keep_blank_values=True)
+            if "__path__" in params:
+                raw_val = params.pop("__path__")[0]
+                real_path = urllib.parse.unquote(raw_val)
+                if not real_path.startswith("/"):
+                    real_path = "/" + real_path
+                environ["PATH_INFO"] = real_path
+                environ["QUERY_STRING"] = urllib.parse.urlencode(params, doseq=True)
+        elif environ.get("HTTP_X_FORWARDED_URI"):
+            raw = urllib.parse.unquote(environ["HTTP_X_FORWARDED_URI"].split("?")[0])
+            if raw and raw not in ("/api/index", "/api/index.py"):
+                environ["PATH_INFO"] = raw
+        elif environ.get("HTTP_X_NOW_ROUTE_MATCHES"):
+            matches = urllib.parse.parse_qs(environ["HTTP_X_NOW_ROUTE_MATCHES"])
+            if "1" in matches:
+                p = urllib.parse.unquote(matches["1"][0])
+                if p and p not in ("/api/index", "/api/index.py"):
+                    environ["PATH_INFO"] = "/" + p.lstrip("/")
+        elif environ.get("HTTP_X_MATCHED_PATH"):
+            raw = urllib.parse.unquote(environ["HTTP_X_MATCHED_PATH"].split("?")[0])
+            if raw and raw not in ("/api/index", "/api/index.py"):
+                environ["PATH_INFO"] = raw
+
+        if environ.get("PATH_INFO") in ("/api/index", "/api/index.py"):
+            environ["PATH_INFO"] = "/"
+
+        return self.wsgi_app(environ, start_response)
+
+
 app = Flask(__name__, static_folder=None)
 if os.environ.get("TRUST_PROXY", "1") == "1":
     app.wsgi_app = ProxyFix(app.wsgi_app, x_for=1, x_proto=1, x_host=1)
+app.wsgi_app = VercelPathFix(app.wsgi_app)
+
 
 IS_PROD = IS_VERCEL or os.environ.get("HTTPS", "0") == "1"
 app.config.update(
