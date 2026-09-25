@@ -359,34 +359,51 @@ def supabase_storage_delete(bucket: str, file_name: str) -> bool:
     return False
 
 
+_last_db_error = ""
+
+
 def connect():
-    global _pg_unreachable_until
+    global _pg_unreachable_until, _last_db_error
     now_ts = time.time()
     db_url = DATABASE_URL or os.environ.get("POSTGRES_URL") or os.environ.get("SUPABASE_DB_URL")
-    if db_url and "pooler.supabase.com" in db_url:
+    if not db_url:
+        if not IS_VERCEL and os.path.exists(DB_PATH):
+            c = sqlite3.connect(DB_PATH, timeout=15)
+            c.row_factory = sqlite3.Row
+            c.execute("PRAGMA journal_mode=WAL")
+            c.execute("PRAGMA foreign_keys=ON")
+            return c
+        raise RuntimeError("DATABASE_URL is missing in environment variables.")
+
+    if "pooler.supabase.com" in db_url:
         if ":5432" in db_url:
             db_url = db_url.replace(":5432", ":6543")
         if "sslmode=" not in db_url.lower():
             db_url += ("&" if "?" in db_url else "?") + "sslmode=require"
-    if db_url and now_ts > _pg_unreachable_until:
+
+    if now_ts > _pg_unreachable_until:
         # 1. Try psycopg2-binary
         try:
             import psycopg2
             raw_conn = psycopg2.connect(db_url, connect_timeout=15)
+            _last_db_error = ""
             return PgConnectionWrapper(raw_conn)
         except ImportError:
             pass
         except Exception as e:
+            _last_db_error = f"psycopg2: {e}"
             print(f"[DB] psycopg2 connection failed: {e}", flush=True)
 
         # 2. Try psycopg (v3)
         try:
             import psycopg
             raw_conn = psycopg.connect(db_url, timeout=15)
+            _last_db_error = ""
             return PgConnectionWrapper(raw_conn)
         except ImportError:
             pass
         except Exception as e:
+            _last_db_error = f"psycopg: {e}"
             print(f"[DB] psycopg connection failed: {e}", flush=True)
 
         # 3. Try pg8000 (pure-Python fallback)
@@ -408,9 +425,11 @@ def connect():
                 ssl_context=ssl_ctx,
                 timeout=15,
             )
+            _last_db_error = ""
             return PgConnectionWrapper(raw_conn)
         except Exception as e:
-            _pg_unreachable_until = now_ts + (5 if IS_VERCEL else 15)
+            _last_db_error = f"pg8000: {e}"
+            _pg_unreachable_until = now_ts + 5
             print(f"[DB] PostgreSQL connection to Supabase failed: {e}.", flush=True)
 
     if not IS_VERCEL and os.path.exists(DB_PATH):
@@ -419,7 +438,11 @@ def connect():
         c.execute("PRAGMA journal_mode=WAL")
         c.execute("PRAGMA foreign_keys=ON")
         return c
-    raise RuntimeError("Database connection unavailable. Please ensure DATABASE_URL is set in environment.")
+
+    if _last_db_error:
+        raise RuntimeError(f"Database connection failed: {_last_db_error}")
+    raise RuntimeError("Database connection unavailable. Please check DATABASE_URL in Vercel.")
+
 
 
 
@@ -2149,6 +2172,7 @@ def api_health():
 
 @app.get("/api/health-db")
 def api_health_db():
+    has_url = bool(DATABASE_URL or os.environ.get("POSTGRES_URL") or os.environ.get("SUPABASE_DB_URL"))
     try:
         c = connect()
         cur = c.execute("SELECT 1")
@@ -2159,10 +2183,17 @@ def api_health_db():
             status="ok",
             database="connected",
             engine="postgresql" if is_pg else "sqlite",
+            has_db_url=has_url,
             test=row[0] if row else 1
         )
     except Exception as e:
-        return jsonify(status="error", database="disconnected", error=str(e)), 500
+        return jsonify(
+            status="error",
+            database="disconnected",
+            has_db_url=has_url,
+            error=str(e)
+        ), 500
+
 
 
 PUBLIC_ROUTES = {"about", "journey", "work", "projects", "achievements", "blog", "contact"}
