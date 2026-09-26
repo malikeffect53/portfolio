@@ -37,9 +37,11 @@ section{padding:clamp(3.5rem,8vw,6.5rem) 0}
 header.top{position:sticky;top:0;z-index:20;background:color-mix(in srgb,var(--bg) 88%,transparent);backdrop-filter:blur(10px);border-bottom:1px solid var(--line)}
 .bar{display:flex;align-items:center;gap:1.2rem;min-height:64px}
 .brand{font-family:'Instrument Serif',serif;font-size:1.5rem;text-decoration:none;margin-right:auto}
-nav.main{display:flex;gap:1.6rem}
-nav.main a{text-decoration:none;color:var(--muted);padding:.3rem 0;border-bottom:1px solid transparent;transition:color .2s,border-color .2s}
-nav.main a:hover,nav.main a[aria-current=page]{color:var(--ink);border-color:var(--accent)}
+nav.main{display:flex;gap:.25rem;align-items:center;background:color-mix(in srgb,var(--bg2) 55%,transparent);backdrop-filter:blur(18px) saturate(180%);-webkit-backdrop-filter:blur(18px) saturate(180%);border:1px solid var(--line);border-radius:999px;padding:.3rem;box-shadow:0 1px 0 rgba(255,255,255,.08) inset,0 8px 24px rgba(0,0,0,.12)}
+nav.main a{text-decoration:none;color:var(--muted);padding:.5rem 1.1rem;border-radius:999px;white-space:nowrap;transition:color .25s ease,background .35s cubic-bezier(.2,.8,.2,1),transform .15s ease}
+nav.main a:hover{color:var(--ink)}
+nav.main a[aria-current=page]{color:var(--on);background:var(--accent);box-shadow:0 2px 10px rgba(0,0,0,.18)}
+nav.main a:active{transform:scale(.92)}
 .menu{display:none;background:none;border:1px solid var(--line);color:var(--ink);border-radius:8px;padding:.35rem .8rem;font:inherit;cursor:pointer}
 details.themes{position:relative}
 details.themes summary{list-style:none;cursor:pointer;display:flex;align-items:center;gap:.5rem;color:var(--muted);font-size:.9rem}
@@ -50,10 +52,11 @@ details.themes summary::-webkit-details-marker{display:none}
 .tpop button:hover,.tpop button[aria-pressed=true]{background:var(--line)}
 .sw{width:18px;height:18px;border-radius:50%;border:1px solid var(--line)}
 @media(max-width:820px){
- .menu{display:block}
- nav.main{position:absolute;left:0;right:0;top:64px;background:var(--bg);border-bottom:1px solid var(--line);flex-direction:column;gap:0;padding:.5rem 1.25rem 1rem;display:none}
- nav.main.open{display:flex}
- nav.main a{padding:.8rem 0;border-bottom:1px solid var(--line)}
+ .menu{display:none}
+ .bar{flex-wrap:wrap;row-gap:.7rem}
+ nav.main{order:3;flex:0 0 100%;width:100%;overflow-x:auto;justify-content:flex-start;-ms-overflow-style:none;scrollbar-width:none}
+ nav.main::-webkit-scrollbar{display:none}
+ nav.main a{padding:.55rem 1rem;font-size:.9rem}
 }
 
 /* buttons */
@@ -62,7 +65,9 @@ details.themes summary::-webkit-details-marker{display:none}
 .btn.ghost{background:transparent;color:var(--ink)}
 .btn:hover{transform:translateY(-2px)}
 .row{display:flex;flex-wrap:wrap;gap:.9rem}
-.link{color:var(--atext);text-decoration:underline;text-underline-offset:4px;text-decoration-thickness:1px}
+.link{display:inline-flex;align-items:center;gap:.35rem;color:var(--atext);text-decoration:none;font-weight:500;font-size:.9rem;padding:.55rem 1.1rem;border:1px solid var(--line);border-radius:999px;background:color-mix(in srgb,var(--bg2) 55%,transparent);cursor:pointer;transition:background .2s ease,border-color .2s ease,transform .15s ease}
+.link:hover{border-color:var(--accent);background:var(--bg2)}
+.link:active{transform:scale(.94)}
 
 /* hero */
 .hero{padding-top:clamp(2.5rem,6vw,5rem)}
@@ -499,7 +504,7 @@ const drawGal=()=>{LBL=galItems().filter(g=>catOk(g.cat,gf)&&g.title.toLowerCase
  $("#ggrid").innerHTML=LBL.length?`<div class="mason">${LBL.map((g,i)=>`<a class="card ${["tall","sq",""][i%3]}" href="#" data-lb="${i}">${pic(g.image,g.title)}<h3>${esc(g.title)}</h3>${meta(g)}</a>`).join("")}</div>`:`<p class="empty">Nothing here yet.</p>`;
  $$("[data-gf]").forEach(b=>b.setAttribute("aria-pressed",b.dataset.gf===gf))};
 function showLb(i,list){if(list)LBL=list;LBI=(i+LBL.length)%LBL.length;const g=LBL[LBI];
- $("#lbody").innerHTML=`<h2>${esc(g.title)}</h2>${meta(g)}${pic(g.image,g.title)}${g.desc?`<p style="margin-top:1rem" class="muted">${esc(g.desc)}</p>`:""}${g.cat?`<p style="margin-top:.8rem"><button class="link" data-wfgo="${esc(g.cat)}" style="background:none;border:0;cursor:pointer;font:inherit">More ${esc(g.cat)} work</button></p>`:""}<div class="lbnav"><button class="btn ghost" data-lbn="-1">Previous</button>${g.href?A(g.href,"View project","btn solid").replace("<a ","<a data-close "):""}<button class="btn ghost" data-lbn="1">Next</button></div>`;
+ $("#lbody").innerHTML=`<h2>${esc(g.title)}</h2>${meta(g)}${pic(g.image,g.title)}${g.desc?`<p style="margin-top:1rem" class="muted">${esc(g.desc)}</p>`:""}${g.cat?`<p style="margin-top:.8rem"><button class="link" data-wfgo="${esc(g.cat)}" style="font:inherit">More ${esc(g.cat)} work</button></p>`:""}<div class="lbnav"><button class="btn ghost" data-lbn="-1">Previous</button>${g.href?A(g.href,"View project","btn solid").replace("<a ","<a data-close "):""}<button class="btn ghost" data-lbn="1">Next</button></div>`;
  if(!$("#lb").open)$("#lb").showModal();if(g.slug&&!list)beacon({ev:"view",sid:rid(),kind:"art",slug:g.slug,path:"/work/gallery",nav:1,w:innerWidth})}
 
 V.achievements=()=>`<section><div class="wrap"><h1 style="font-size:clamp(2.4rem,6vw,4.4rem);margin-bottom:2rem">Achievements</h1>${chips(ACATS,af,"data-af")}<div id="agrid"></div></div></section>`;
@@ -598,6 +603,13 @@ document.addEventListener("click",e=>{
  if(t===dlg||t===$("#lb"))t.close();
 });
 document.addEventListener("input",e=>{if(e.target.id==="wq"){wq=e.target.value;drawWork()}if(e.target.id==="gq"){gq=e.target.value;drawGal()}});
+/* haptics: subtle tap feedback on any button/link/nav item. Silently does nothing
+   where the Vibration API isn't available (notably iOS Safari, which never
+   implemented it — this is a platform limitation, not a bug in this code). */
+const haptic=(ms=10)=>{try{navigator.vibrate&&navigator.vibrate(ms)}catch(e){}};
+document.addEventListener("pointerdown",e=>{
+ if(e.target.closest("a[data-l], .btn, .link, nav.main a, button, summary, .card"))haptic();
+},{passive:true});
 document.addEventListener("keydown",e=>{if($("#lb").open){if(e.key==="ArrowRight")showLb(LBI+1);if(e.key==="ArrowLeft")showLb(LBI-1)}});
 let sx=0;const lbx=$("#lb");
 lbx.addEventListener("touchstart",e=>sx=e.touches[0].clientX,{passive:true});
