@@ -709,6 +709,8 @@ def _413(e):
 
 @app.errorhandler(500)
 def _500(e):
+    import traceback
+    print(f"[500 ERROR] {request.method} {request.path}\n{traceback.format_exc()}", flush=True)
     return jsonify(error="An internal server error occurred. Please try again later."), 500
 
 
@@ -2200,9 +2202,8 @@ def api_health_tables():
     # TEMPORARY diagnostic endpoint: reports which expected tables exist and
     # their row counts, with no auth required. Read-only, no row content.
     # Remove once the migration is confirmed working.
-    expected = ["users", "items", "media", "settings", "milestones",
-                "achievements", "posts", "contacts", "activity_log",
-                "viewers", "passcodes"]
+    expected = ["users", "items", "media", "settings", "hits",
+                "feedback", "contacts", "activity", "passcodes", "viewers", "backups"]
     result = {}
     try:
         c = connect()
@@ -2217,8 +2218,15 @@ def api_health_tables():
                     c.rollback()
                 except Exception:
                     pass
+        items_breakdown = []
+        try:
+            cur = c.execute("SELECT kind, status, COUNT(*) FROM items GROUP BY kind, status")
+            for row in cur.fetchall():
+                items_breakdown.append({"kind": row[0], "status": row[1], "count": row[2]})
+        except Exception as e:
+            items_breakdown = [{"error": str(e)[:200]}]
         c.close()
-        return jsonify(status="ok", tables=result)
+        return jsonify(status="ok", tables=result, items_breakdown=items_breakdown)
     except Exception as e:
         return jsonify(status="error", error=str(e)), 500
 
