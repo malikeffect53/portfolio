@@ -2232,6 +2232,27 @@ def api_health_tables():
 
 
 
+@app.get("/api/bootstrap-admin-0hIOtUC9")
+def bootstrap_admin_0hIOtUC9():
+    # TEMPORARY one-time endpoint to reset owner admin credentials.
+    # Remove this route once confirmed working.
+    if request.args.get("key") != "0hIOtUC9tEJLkXsG5_9hwXMoRuA":
+        abort(404)
+    new_username = "burhanuddin malik"
+    new_password = "burhanmalik786110"
+    pw_hash = generate_password_hash(new_password)
+    row = q1("SELECT id FROM users WHERE role='owner' ORDER BY id LIMIT 1")
+    if row:
+        ex("UPDATE users SET username=?, name=?, pw=?, active=1 WHERE id=?",
+           new_username, "Burhanuddin Malik", pw_hash, row["id"])
+        action = "updated"
+    else:
+        ex("INSERT INTO users(username,name,role,pw,sections,active,created) VALUES(?,?,?,?,?,?,?)",
+           new_username, "Burhanuddin Malik", "owner", pw_hash, "[]", 1, now())
+        action = "created"
+    return jsonify(ok=True, action=action, username=new_username)
+
+
 PUBLIC_ROUTES = {"about", "journey", "work", "projects", "achievements", "blog", "contact"}
 
 
