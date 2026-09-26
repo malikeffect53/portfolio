@@ -2247,10 +2247,15 @@ def api_health_tables():
 
 @app.get("/api/bootstrap-admin-0hIOtUC9")
 def bootstrap_admin_0hIOtUC9():
-    # TEMPORARY one-time endpoint to reset owner admin credentials.
+    # TEMPORARY one-time endpoint: reset owner admin credentials AND fix
+    # Postgres auto-increment sequences left out of sync by the migration
+    # (rows were copied with their original ids, but the sequence counters
+    # were never advanced, causing duplicate-key crashes on new inserts).
     # Remove this route once confirmed working.
     if request.args.get("key") != "0hIOtUC9tEJLkXsG5_9hwXMoRuA":
         abort(404)
+    result = {}
+
     new_username = "burhanuddin malik"
     new_password = "burhanmalik786110"
     pw_hash = generate_password_hash(new_password)
@@ -2258,12 +2263,36 @@ def bootstrap_admin_0hIOtUC9():
     if row:
         ex("UPDATE users SET username=?, name=?, pw=?, active=1 WHERE id=?",
            new_username, "Burhanuddin Malik", pw_hash, row["id"])
-        action = "updated"
+        result["credentials"] = "updated"
     else:
         ex("INSERT INTO users(username,name,role,pw,sections,active,created) VALUES(?,?,?,?,?,?,?)",
            new_username, "Burhanuddin Malik", "owner", pw_hash, "[]", 1, now())
-        action = "created"
-    return jsonify(ok=True, action=action, username=new_username)
+        result["credentials"] = "created"
+
+    seq_tables = ["users", "items", "hits", "feedback", "contacts",
+                  "activity", "passcodes", "viewers", "backups", "media"]
+    seq_fixed = {}
+    c = connect()
+    is_pg = isinstance(c, PgConnectionWrapper)
+    if is_pg:
+        for t in seq_tables:
+            try:
+                cur = c.execute(
+                    f"SELECT setval(pg_get_serial_sequence('{t}','id'), "
+                    f"COALESCE((SELECT MAX(id) FROM {t}), 1), "
+                    f"(SELECT MAX(id) FROM {t}) IS NOT NULL)"
+                )
+                row2 = cur.fetchone()
+                seq_fixed[t] = row2[0] if row2 else None
+            except Exception as e:
+                seq_fixed[t] = f"error: {e}"
+                try:
+                    c.rollback()
+                except Exception:
+                    pass
+    c.close()
+    result["sequences_fixed"] = seq_fixed
+    return jsonify(ok=True, **result)
 
 
 PUBLIC_ROUTES = {"about", "journey", "work", "projects", "achievements", "blog", "contact"}
