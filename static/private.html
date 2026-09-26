@@ -66,9 +66,11 @@ label>input{margin-top:.3rem}
 .file-box .f-title{font-weight:600;font-size:.95rem;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .file-box .f-sub{font-size:.82rem;color:var(--muted)}
 
-dialog{background:var(--bg2);color:var(--ink);border:1px solid var(--line);border-radius:14px;padding:1.4rem;max-width:90vw;margin:auto}
+dialog{background:var(--bg2);color:var(--ink);border:1px solid var(--line);border-radius:14px;padding:1.4rem;max-width:90vw;max-height:88vh;max-height:88dvh;overflow:auto;margin:auto}
 dialog::backdrop{background:rgba(0,0,0,.75);backdrop-filter:blur(4px)}
-.lb-img{max-width:100%;max-height:80vh;object-fit:contain;border-radius:8px;display:block;margin:auto}
+dialog[open]{animation:privpop .22s ease-out}
+@keyframes privpop{from{opacity:0;transform:translateY(10px) scale(.98)}}
+.lb-img{max-width:100%;max-height:80vh;max-height:80dvh;object-fit:contain;border-radius:8px;display:block;margin:auto}
 
 .err{color:var(--bad);font-size:.88rem}
 .empty-msg{padding:4rem 0;text-align:center;color:var(--muted)}

@@ -133,8 +133,10 @@ tr:hover td{background:rgba(255,255,255,.02)}
 .toast{position:fixed;bottom:1.5rem;left:50%;transform:translateX(-50%);background:var(--gold);color:var(--on);padding:.75rem 1.4rem;border-radius:10px;z-index:999;font-weight:600;box-shadow:0 8px 30px rgba(0,0,0,.4)}
 .toast.err{background:var(--bad);color:var(--on)}
 [hidden]{display:none!important}
-dialog{background:var(--bg2);color:var(--ink);border:1px solid var(--line);border-radius:16px;padding:1.6rem;width:min(640px,calc(100% - 2rem));margin:auto;box-shadow:0 24px 70px rgba(0,0,0,.6)}
+dialog{background:var(--bg2);color:var(--ink);border:1px solid var(--line);border-radius:16px;padding:1.6rem;width:min(640px,calc(100% - 2rem));max-height:88vh;max-height:88dvh;overflow-y:auto;margin:auto;box-shadow:0 24px 70px rgba(0,0,0,.6)}
 dialog::backdrop{background:rgba(3,8,24,.75);backdrop-filter:blur(3px)}
+dialog[open]{animation:admpop .22s ease-out}
+@keyframes admpop{from{opacity:0;transform:translateY(10px) scale(.98)}}
 .thumb{max-width:140px;max-height:90px;object-fit:cover;border-radius:8px;border:1px solid var(--line);margin-top:.4rem;display:block;background:var(--bg)}
 .checks{display:flex;flex-wrap:wrap;gap:.5rem 1.4rem}
 .err{color:var(--bad)}
