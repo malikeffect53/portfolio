@@ -37,11 +37,12 @@ section{padding:clamp(3.5rem,8vw,6.5rem) 0}
 header.top{position:sticky;top:0;z-index:20;background:color-mix(in srgb,var(--bg) 88%,transparent);backdrop-filter:blur(10px);border-bottom:1px solid var(--line)}
 .bar{display:flex;align-items:center;gap:1.2rem;min-height:64px}
 .brand{font-family:'Instrument Serif',serif;font-size:1.5rem;text-decoration:none;margin-right:auto}
-nav.main{display:flex;gap:.25rem;align-items:center;background:color-mix(in srgb,var(--bg2) 55%,transparent);backdrop-filter:blur(18px) saturate(180%);-webkit-backdrop-filter:blur(18px) saturate(180%);border:1px solid var(--line);border-radius:999px;padding:.3rem;box-shadow:0 1px 0 rgba(255,255,255,.08) inset,0 8px 24px rgba(0,0,0,.12)}
-nav.main a{text-decoration:none;color:var(--muted);padding:.5rem 1.1rem;border-radius:999px;white-space:nowrap;transition:color .25s ease,background .35s cubic-bezier(.2,.8,.2,1),transform .15s ease}
+nav.main{display:flex;gap:.25rem;align-items:center;position:relative;background:color-mix(in srgb,var(--bg2) 55%,transparent);backdrop-filter:blur(18px) saturate(180%);-webkit-backdrop-filter:blur(18px) saturate(180%);border:1px solid var(--line);border-radius:999px;padding:.3rem;box-shadow:0 1px 0 rgba(255,255,255,.08) inset,0 8px 24px rgba(0,0,0,.12)}
+nav.main a{position:relative;z-index:1;text-decoration:none;color:var(--muted);padding:.5rem 1.1rem;border-radius:999px;white-space:nowrap;transition:color .25s ease,transform .15s ease}
 nav.main a:hover{color:var(--ink)}
-nav.main a[aria-current=page]{color:var(--on);background:var(--accent);box-shadow:0 2px 10px rgba(0,0,0,.18)}
+nav.main a[aria-current=page]{color:var(--on)}
 nav.main a:active{transform:scale(.92)}
+#navind{position:absolute;top:.3rem;bottom:.3rem;left:.3rem;width:0;border-radius:999px;background:var(--accent);box-shadow:0 2px 10px rgba(0,0,0,.18);transition:transform .38s cubic-bezier(.34,1.4,.4,1),width .38s cubic-bezier(.34,1.4,.4,1);pointer-events:none;z-index:0}
 .menu{display:none;background:none;border:1px solid var(--line);color:var(--ink);border-radius:8px;padding:.35rem .8rem;font:inherit;cursor:pointer}
 details.themes{position:relative}
 details.themes summary{list-style:none;cursor:pointer;display:flex;align-items:center;gap:.5rem;color:var(--muted);font-size:.9rem}
@@ -65,8 +66,10 @@ details.themes summary::-webkit-details-marker{display:none}
 .btn.ghost{background:transparent;color:var(--ink)}
 .btn:hover{transform:translateY(-2px)}
 .row{display:flex;flex-wrap:wrap;gap:.9rem}
-.link{display:inline-flex;align-items:center;gap:.35rem;color:var(--atext);text-decoration:none;font-weight:500;font-size:.9rem;padding:.55rem 1.1rem;border:1px solid var(--line);border-radius:999px;background:color-mix(in srgb,var(--bg2) 55%,transparent);cursor:pointer;transition:background .2s ease,border-color .2s ease,transform .15s ease}
-.link:hover{border-color:var(--accent);background:var(--bg2)}
+.link{display:inline-flex;align-items:center;gap:.35rem;color:var(--atext);text-decoration:none;font-weight:600;font-size:.88rem;padding:.55rem 1.15rem;border:1.5px solid var(--accent);border-radius:999px;background:color-mix(in srgb,var(--accent) 12%,transparent);cursor:pointer;transition:background .2s ease,color .2s ease,transform .15s ease}
+.link::after{content:"→";transition:transform .2s ease}
+.card:hover .link::after{transform:translateX(3px)}
+.link:hover{background:var(--accent);color:var(--on)}
 .link:active{transform:scale(.94)}
 
 /* hero */
@@ -126,7 +129,10 @@ details.themes summary::-webkit-details-marker{display:none}
 .ms .when{color:var(--atext);font-size:.9rem}
 .ms h3{margin:.15rem 0 .3rem}
 .ms p{color:var(--muted);font-size:.98rem;margin-bottom:.5rem}
-.ms button{background:none;border:0;color:var(--atext);font:inherit;text-decoration:underline;text-underline-offset:4px;cursor:pointer;padding:0}
+.ms button{display:inline-flex;align-items:center;gap:.35rem;color:var(--atext);font:inherit;font-weight:600;font-size:.88rem;background:color-mix(in srgb,var(--accent) 12%,transparent);border:1.5px solid var(--accent);border-radius:999px;padding:.55rem 1.15rem;cursor:pointer;margin-top:.6rem;transition:background .2s ease,color .2s ease,transform .15s ease}
+.ms button::after{content:"→"}
+.ms button:hover{background:var(--accent);color:var(--on)}
+.ms button:active{transform:scale(.94)}
 @media(min-width:900px){
  .tl.h{flex-direction:row;overflow-x:auto;border-left:0;padding:2.4rem 0 1.5rem;gap:1.4rem;scroll-snap-type:x proximity;border-top:1px solid var(--accent)}
  .tl.h .ms{flex:0 0 280px;padding:1.6rem 0 0;scroll-snap-align:start}
@@ -291,7 +297,7 @@ drawThemes();
 setTheme(THEMES.some(t=>t[0]===store.get("theme"))?store.get("theme"):"night");
 $("#yr").textContent=new Date().getFullYear();
 const NAV=[["Home","/"],["About","/about"],["Journey","/journey"],["Work","/work"],["Blog","/blog"],["Contact","/contact"]];
-$("#nav").innerHTML=NAV.map(n=>`<a href="${n[1]}" data-l data-path="${n[1]}">${n[0]}</a>`).join("");
+$("#nav").innerHTML=`<span id="navind" aria-hidden="true"></span>`+NAV.map(n=>`<a href="${n[1]}" data-l data-path="${n[1]}">${n[0]}</a>`).join("");
 $("#menu").onclick=()=>{const o=$("#nav").classList.toggle("open");$("#menu").setAttribute("aria-expanded",o)};
 
 /* ---------- helpers ---------- */
@@ -400,7 +406,7 @@ ${feat.length?`<section><div class="wrap"><div class="head"><h2>${esc(featTitle)
 <section><div class="wrap split"><h2>${esc(contactTitle)}</h2><div>${A("/contact","Get in touch","btn solid")}</div></div></section>`;
 };
 
-const postGrid=l=>l.length?`<div class="grid">${l.map(p=>A("/blog/"+p.slug,`${pic(p.cover,p.title)}<h3>${esc(p.title)}</h3><div class="meta">${p.soon?`<span class="soon">Coming soon</span>`:`<span>${esc(fmtDate(p.date||p.created))}</span>`}${p.category?`<span class="pill">${esc(p.category)}</span>`:""}</div><p>${esc(p.excerpt)}</p>`,"card")).join("")}</div>`:`<p class="muted">The first articles are on their way.</p>`;
+const postGrid=l=>l.length?`<div class="grid">${l.map(p=>A("/blog/"+p.slug,`${pic(p.cover,p.title)}<h3>${esc(p.title)}</h3><div class="meta">${p.soon?`<span class="soon">Coming soon</span>`:`<span>${esc(fmtDate(p.date||p.created))}</span>`}${p.category?`<span class="pill">${esc(p.category)}</span>`:""}</div><p>${esc(p.excerpt)}</p><span class="link">Read article</span>`,"card")).join("")}</div>`:`<p class="muted">The first articles are on their way.</p>`;
 
 V.about=()=>{
  const s = C.settings || {};
@@ -567,6 +573,7 @@ async function route(){
  $("#mdesc").content=title==="Burhanuddin Malik"?"Creating with Purpose. Exploring with Curiosity. Growing with Every Journey.":title;
  window.scrollTo(0,0);$("#main").focus({preventScroll:true});
  $$("#nav a").forEach(a=>{const on=a.dataset.path==="/"?!seg.length:seg[0]&&a.dataset.path==="/"+seg[0];on?a.setAttribute("aria-current","page"):a.removeAttribute("aria-current")});
+ positionNavIndicator();
  $("#nav").classList.remove("open");$("#menu").setAttribute("aria-expanded","false");
  if(seg[0]==="work"&&!seg[1])drawWork();if(seg[0]==="work"&&seg[1]==="gallery")drawGal();
  if(seg[0]==="achievements")drawAch();if(seg[0]==="blog"&&!seg[1])drawBlog();
@@ -607,6 +614,16 @@ document.addEventListener("input",e=>{if(e.target.id==="wq"){wq=e.target.value;d
    where the Vibration API isn't available (notably iOS Safari, which never
    implemented it — this is a platform limitation, not a bug in this code). */
 const haptic=(ms=10)=>{try{navigator.vibrate&&navigator.vibrate(ms)}catch(e){}};
+function positionNavIndicator(){
+ const nav=$("#nav"),ind=$("#navind"),cur=nav&&nav.querySelector("a[aria-current=page]");
+ if(!nav||!ind)return;
+ if(!cur){ind.style.width="0px";return}
+ const nr=nav.getBoundingClientRect(),cr=cur.getBoundingClientRect();
+ ind.style.width=cr.width+"px";
+ ind.style.transform=`translateX(${cr.left-nr.left-3}px)`;
+}
+window.addEventListener("resize",positionNavIndicator);
+$("#nav").addEventListener("scroll",positionNavIndicator,{passive:true});
 document.addEventListener("pointerdown",e=>{
  if(e.target.closest("a[data-l], .btn, .link, nav.main a, button, summary, .card"))haptic();
 },{passive:true});
