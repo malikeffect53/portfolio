@@ -1787,7 +1787,7 @@ def overview():
     placeholder_posts = 0
     for r in posts_rows:
         try:
-            d = json.loads(r[0] or '{}')
+            d = data_json(r[0])
         except Exception:
             d = {}
         is_placeholder = bool(d.get('soon')) or not d.get('body', '').strip()

@@ -294,6 +294,7 @@ const ph=l=>`<div class="ph"><span>${esc(l||"Image to be added")}</span></div>`;
 const pic=(src,label,cls="")=>safeUrl(src)?`<img class="im ${cls}" src="${esc(safeUrl(src))}" alt="${esc(label)}" loading="lazy">`:ph(label);
 const A=(href,inner,cls="")=>`<a href="${esc(href)}" data-l${cls?` class="${cls}"`:""}>${inner}</a>`;
 const meta=p=>`<div class="meta">${p.year?`<span>${esc(p.year)}</span>`:""}${p.cat?`<span class="pill">${esc(p.cat)}</span>`:""}</div>`;
+const arr=x=>Array.isArray(x)?x:[];
 const norm=p=>{
  const secs=arr(p.sections).slice();
  const has=n=>secs.some(s=>s[0]&&s[0].toLowerCase()===n.toLowerCase());
