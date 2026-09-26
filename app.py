@@ -260,6 +260,9 @@ class PgCursorWrapper:
                 needs_returning = True
                 s = s.rstrip(";") + " RETURNING id"
 
+        # items.data is JSONB on Postgres, which doesn't support LIKE directly
+        s = re.sub(r"\bdata\s+LIKE\b", "data::text LIKE", s, flags=re.IGNORECASE)
+
         # Convert SQLite ? parameter placeholders to PostgreSQL %s
         s = "%s".join(s.split("?"))
         return s, needs_returning
@@ -789,9 +792,19 @@ def unique_slug(kind, base, skip_id=None):
     return s
 
 
+def data_json(v):
+    # items.data is JSONB on Postgres (psycopg2/psycopg auto-decode it to a
+    # dict/list already) but plain TEXT on SQLite (needs json.loads). Handle both.
+    if v is None:
+        return {}
+    if isinstance(v, (dict, list)):
+        return v
+    return json.loads(v or "{}")
+
+
 def item_out(r):
     r = dict(r)
-    r["data"] = json.loads(r["data"] or "{}")
+    r["data"] = data_json(r["data"])
     return r
 
 
@@ -1101,7 +1114,7 @@ def admin_search():
     rows = qa("SELECT id, kind, slug, title, status, access, updated, data FROM items WHERE title LIKE ? OR slug LIKE ? OR data LIKE ? ORDER BY updated DESC LIMIT 50", like, like, like)
     items = []
     for r in rows:
-        d = json.loads(r["data"] or "{}")
+        d = data_json(r["data"])
         items.append({
             "id": r["id"],
             "kind": r["kind"],
@@ -1119,7 +1132,7 @@ def admin_search():
 
 # ------------------------------------------------------------------ public content
 def flat(r):
-    d = json.loads(r["data"] or "{}")
+    d = data_json(r["data"])
     return {"id": r["id"], "slug": r["slug"], "title": r["title"], "status": r["status"], "pos": r["pos"],
             "created": r["created"], **d}
 
@@ -1238,7 +1251,7 @@ def date_range():
 def title_map():
     m = {}
     for r in qa("SELECT kind,slug,title,data FROM items WHERE kind IN ('project','gallery','post')"):
-        d = json.loads(r["data"] or "{}")
+        d = data_json(r["data"])
         m[(r["kind"], r["slug"])] = (r["title"], d.get("cat") or d.get("category") or "")
     return m
 
@@ -1871,7 +1884,7 @@ def export_rows(name):
     if name == "archive":
         rows = []
         for r in db().execute("SELECT * FROM items WHERE kind IN (%s) ORDER BY kind,created" % ",".join("?" * len(PRIVATE_KINDS)), PRIVATE_KINDS):
-            d = json.loads(r["data"] or "{}")
+            d = data_json(r["data"])
             rows.append([ARCHIVE[r["kind"]], r["title"], d.get("date") or d.get("year") or "", r["status"], r["access"],
                          d.get("text") or d.get("details") or "", d.get("image") or d.get("file") or ""])
         return ["Section", "Title", "Date", "Status", "Access", "Text", "File"], rows
