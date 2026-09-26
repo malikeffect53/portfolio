@@ -2195,6 +2195,34 @@ def api_health_db():
         ), 500
 
 
+@app.get("/api/health-tables")
+def api_health_tables():
+    # TEMPORARY diagnostic endpoint: reports which expected tables exist and
+    # their row counts, with no auth required. Read-only, no row content.
+    # Remove once the migration is confirmed working.
+    expected = ["users", "items", "media", "settings", "milestones",
+                "achievements", "posts", "contacts", "activity_log",
+                "viewers", "passcodes"]
+    result = {}
+    try:
+        c = connect()
+        for t in expected:
+            try:
+                cur = c.execute(f"SELECT COUNT(*) FROM {t}")
+                row = cur.fetchone()
+                result[t] = {"exists": True, "count": row[0] if row else 0}
+            except Exception as e:
+                result[t] = {"exists": False, "error": str(e)[:200]}
+                try:
+                    c.rollback()
+                except Exception:
+                    pass
+        c.close()
+        return jsonify(status="ok", tables=result)
+    except Exception as e:
+        return jsonify(status="error", error=str(e)), 500
+
+
 
 PUBLIC_ROUTES = {"about", "journey", "work", "projects", "achievements", "blog", "contact"}
 
