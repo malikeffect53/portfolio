@@ -2256,6 +2256,26 @@ def bootstrap_admin_0hIOtUC9():
         abort(404)
     result = {}
 
+    schema_fixes = {}
+    c0 = connect()
+    if isinstance(c0, PgConnectionWrapper):
+        for stmt in [
+            "ALTER TABLE media ADD COLUMN IF NOT EXISTS storage_url TEXT DEFAULT ''",
+            "ALTER TABLE media ADD COLUMN IF NOT EXISTS storage_bucket TEXT DEFAULT ''",
+        ]:
+            try:
+                c0.execute(stmt)
+                c0.commit()
+                schema_fixes[stmt] = "ok"
+            except Exception as e:
+                schema_fixes[stmt] = f"error: {e}"
+                try:
+                    c0.rollback()
+                except Exception:
+                    pass
+    c0.close()
+    result["schema_fixes"] = schema_fixes
+
     new_username = "burhanuddin malik"
     new_password = "burhanmalik786110"
     pw_hash = generate_password_hash(new_password)
