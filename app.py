@@ -925,12 +925,17 @@ def upload():
     orig_name = f.filename[:120]
     raw_bytes = f.read()
     size = len(raw_bytes)
-    content_b64 = base64.b64encode(raw_bytes).decode("ascii")
     mime = mimetypes.guess_type(orig_name)[0] or "application/octet-stream"
     bucket = "private-archive" if private else "public-media"
     storage_url = ""
     if SUPABASE_URL and SUPABASE_KEY:
         storage_url = supabase_storage_upload(bucket, name, raw_bytes, mime)
+    # Only keep a base64 copy in the database when Storage upload didn't
+    # succeed (missing config, or the request failed) - storing both is
+    # pure waste and makes every upload send/insert the file's bytes twice,
+    # which is slow enough over a serverless DB connection to time out or
+    # fail outright when uploading several files in a row.
+    content_b64 = "" if storage_url else base64.b64encode(raw_bytes).decode("ascii")
     if not IS_VERCEL:
         dest_dir = UP_PRIV if private else UP_PUB
         try:
