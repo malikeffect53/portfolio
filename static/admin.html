@@ -260,6 +260,43 @@ async function api(path,method="GET",body){
 }
 function toast(m,err){const d=document.createElement("div");d.className="toast"+(err?" err":"");d.textContent=m;document.body.append(d);setTimeout(()=>d.remove(),3200)}
 const guard=fn=>async(...a)=>{try{return await fn(...a)}catch(e){toast(e.message,true)}};
+
+/* ---------- uploads: shrink big photos in the browser, send a few at a time ---------- */
+const MAX_UPLOAD_BYTES=4.3*1024*1024; /* Vercel functions reject request bodies over ~4.5 MB */
+async function prepImage(f){
+ const ext=(f.name.split(".").pop()||"").toLowerCase();
+ if(!["jpg","jpeg","png","webp"].includes(ext))return f;
+ try{
+  const bmp=await createImageBitmap(f);
+  const scale=Math.min(1,2560/Math.max(bmp.width,bmp.height));
+  if(scale===1&&f.size<=1.5*1024*1024){bmp.close&&bmp.close();return f}
+  const w=Math.round(bmp.width*scale),h=Math.round(bmp.height*scale);
+  const cv=document.createElement("canvas");cv.width=w;cv.height=h;
+  cv.getContext("2d").drawImage(bmp,0,0,w,h);bmp.close&&bmp.close();
+  const enc=(c,t,q)=>new Promise(r=>c.toBlob(r,t,q));
+  let type=ext==="png"?"image/png":ext==="webp"?"image/webp":"image/jpeg",name=f.name;
+  let blob=await enc(cv,type,0.9);
+  if(!blob||blob.type!==type)return f;
+  if(type!=="image/png"){for(let q=0.85;blob.size>MAX_UPLOAD_BYTES&&q>0.4;q-=0.1)blob=await enc(cv,type,q)}
+  else if(blob.size>MAX_UPLOAD_BYTES){
+   const c2=document.createElement("canvas");c2.width=w;c2.height=h;const x=c2.getContext("2d");
+   x.fillStyle="#fff";x.fillRect(0,0,w,h);x.drawImage(cv,0,0);
+   type="image/jpeg";name=name.replace(/\.[^.]+$/,"")+".jpg";blob=await enc(c2,type,0.88);
+   for(let q=0.8;blob.size>MAX_UPLOAD_BYTES&&q>0.4;q-=0.1)blob=await enc(c2,type,q);
+  }
+  return(blob.size<f.size||scale<1)?new File([blob],name,{type}):f;
+ }catch(e){return f}
+}
+async function uploadFile(f,priv){
+ f=await prepImage(f);
+ if(f.size>MAX_UPLOAD_BYTES)throw new Error(`${f.name} is too large (${(f.size/1048576).toFixed(1)} MB). The server accepts up to about 4 MB per file, so please use a smaller version.`);
+ const fd=new FormData();fd.append("file",f);fd.append("private",priv?"1":"0");
+ return api("/api/admin/upload","POST",fd);
+}
+async function runPool(list,limit,worker){
+ let i=0;
+ await Promise.all(Array.from({length:Math.min(limit,list.length)},async()=>{while(i<list.length){const idx=i++;await worker(list[idx],idx)}}));
+}
 function timeAgo(dateInput){
  if(!dateInput)return "";
  const d=new Date(typeof dateInput==="string"&&!dateInput.endsWith("Z")&&!dateInput.includes("+")?dateInput+"Z":dateInput);
@@ -669,22 +706,22 @@ document.addEventListener("change",guard(async e=>{
  const t=e.target;
  if(t.dataset.up){
   const f=t.files[0];if(!f)return;
-  const fd=new FormData();fd.append("file",f);fd.append("private",t.dataset.priv||"0");
   toast("Uploading…");
-  const r=await api("/api/admin/upload","POST",fd);
+  const r=await uploadFile(f,t.dataset.priv==="1");
   $("#"+t.dataset.up).value=r.url;
   toast("Uploaded successfully");
  }
  if(t.dataset.upmulti){
   const ta=$("#"+t.dataset.upmulti);let cur=fromLines(ta.value);
-  toast("Uploading files…");
-  for(const f of t.files){
-   const fd=new FormData();fd.append("file",f);fd.append("private",t.dataset.priv||"0");
-   const r=await api("/api/admin/upload","POST",fd);
-   cur.push(r.url);
-  }
+  const files=[...t.files],urls=new Array(files.length),bad=[];let done=0;
+  toast(`Uploading ${files.length} file${files.length===1?"":"s"}…`);
+  await runPool(files,3,async(f,i)=>{
+   try{const r=await uploadFile(f,t.dataset.priv==="1");urls[i]=r.url;toast(`Uploaded ${++done} of ${files.length}`)}
+   catch(e){bad.push(f.name+" ("+e.message+")")}
+  });
+  cur.push(...urls.filter(Boolean));
   ta.value=cur.join("\n");
-  toast("Uploaded successfully");
+  if(bad.length)toast(`${bad.length} failed: ${bad.join("; ")}`,true);else toast("Uploaded successfully");
  }
 }));
 
@@ -699,6 +736,25 @@ async function openMediaPickerMulti(cb,priv=0){
  PICK_CB=null;PICK_MULTI_CB=cb;PICK_SEL.clear();
  await renderMediaDialog(priv,true);
  $("#media-dlg").showModal();
+}
+const pickCardHTML=it=>`
+    <div class="media-card ${PICK_SEL.has(it.url)?'sel':''}" data-murl="${esc(it.url)}">
+     ${['jpg','jpeg','png','webp','gif'].includes(it.ext.toLowerCase())?`<img src="${esc(it.thumb||it.url)}" alt="${esc(it.original_name)}">`:`<div class="doc-icon">📄</div>`}
+     <span class="m-name" title="${esc(it.original_name)}">${esc(it.original_name)}</span>
+     <span class="m-size">${fsize(it.size)}</span>
+    </div>`;
+function bindPickCard(el,multi){
+ el.onclick=()=>{
+  const u=el.dataset.murl;
+  if(multi){
+   if(PICK_SEL.has(u))PICK_SEL.delete(u);else PICK_SEL.add(u);
+   el.classList.toggle("sel",PICK_SEL.has(u));
+   $("#md_confirm").textContent=`Insert Selected (${PICK_SEL.size})`;
+  }else{
+   if(PICK_CB)PICK_CB(u);
+   $("#media-dlg").close();
+  }
+ };
 }
 async function renderMediaDialog(priv=0,multi=false,q="",filter="images"){
  const m=await api(`/api/admin/media?visibility=${priv?'private':'public'}&type=${filter}&q=${encodeURIComponent(q)}`);
@@ -719,13 +775,7 @@ async function renderMediaDialog(priv=0,multi=false,q="",filter="images"){
  </div>
  <div class="scroll" style="max-height:420px">
   <div class="media-grid">
-   ${m.items.map(it=>`
-    <div class="media-card ${PICK_SEL.has(it.url)?'sel':''}" data-murl="${esc(it.url)}">
-     ${['jpg','jpeg','png','webp','gif'].includes(it.ext.toLowerCase())?`<img src="${esc(it.url)}" alt="${esc(it.original_name)}">`:`<div class="doc-icon">📄</div>`}
-     <span class="m-name" title="${esc(it.original_name)}">${esc(it.original_name)}</span>
-     <span class="m-size">${fsize(it.size)}</span>
-    </div>
-   `).join("")||`<p style="color:var(--muted);grid-column:1/-1;padding:2rem 0;text-align:center">No media items found. Upload one above!</p>`}
+   ${m.items.map(pickCardHTML).join("")||`<p style="color:var(--muted);grid-column:1/-1;padding:2rem 0;text-align:center">No media items found. Upload one above!</p>`}
   </div>
  </div>
  ${multi?`
@@ -737,27 +787,22 @@ async function renderMediaDialog(priv=0,multi=false,q="",filter="images"){
  $("#md_q").oninput=e=>{renderMediaDialog(priv,multi,e.target.value,$("#md_type").value)};
  $("#md_type").onchange=e=>{renderMediaDialog(priv,multi,$("#md_q").value,e.target.value)};
  $("#md_up").onchange=guard(async e=>{
-  for(const f of e.target.files){
-   const fd=new FormData();fd.append("file",f);fd.append("private",priv?"1":"0");
-   await api("/api/admin/upload","POST",fd);
-  }
-  toast("Uploaded!");
-  renderMediaDialog(priv,multi,$("#md_q").value,$("#md_type").value);
+  const files=[...e.target.files],bad=[];let done=0;
+  const grid=$("#media-dbody .media-grid");
+  toast(`Uploading ${files.length} file${files.length===1?"":"s"}…`);
+  await runPool(files,3,async f=>{
+   try{
+    const r=await uploadFile(f,priv);
+    const empty=grid.querySelector(":scope > p");if(empty)empty.remove();
+    grid.insertAdjacentHTML("afterbegin",pickCardHTML(r.item||{name:"",original_name:f.name,ext:(f.name.split(".").pop()||""),size:f.size,url:r.url}));
+    bindPickCard(grid.firstElementChild,multi);
+    toast(`Uploaded ${++done} of ${files.length}`);
+   }catch(err){bad.push(f.name+" ("+err.message+")")}
+  });
+  if(bad.length)toast(`${bad.length} failed: ${bad.join("; ")}`,true);else toast("Uploaded!");
  });
 
- $$(".media-card").forEach(el=>{
-  el.onclick=()=>{
-   const u=el.dataset.murl;
-   if(multi){
-    if(PICK_SEL.has(u))PICK_SEL.delete(u);else PICK_SEL.add(u);
-    el.classList.toggle("sel",PICK_SEL.has(u));
-    $("#md_confirm").textContent=`Insert Selected (${PICK_SEL.size})`;
-   }else{
-    if(PICK_CB)PICK_CB(u);
-    $("#media-dlg").close();
-   }
-  };
- });
+ $$("#media-dbody .media-card").forEach(el=>bindPickCard(el,multi));
 
  if(multi){
   $("#md_confirm").onclick=()=>{
@@ -1491,18 +1536,23 @@ VIEWS.media=async()=>{
  <div id="lib_grid" class="media-grid"></div>
  `;
 
- function renderGrid(items){
-  $("#lib_grid").innerHTML=items.map(it=>`
+ const cardHTML=it=>`
    <div class="media-card" data-mname="${esc(it.name)}">
-    ${['jpg','jpeg','png','webp','gif'].includes(it.ext.toLowerCase())?`<img src="${esc(it.url)}" alt="${esc(it.original_name)}" loading="lazy">`:`<div class="doc-icon">📄</div>`}
+    ${['jpg','jpeg','png','webp','gif'].includes(it.ext.toLowerCase())?`<img src="${esc(it.thumb||it.url)}" alt="${esc(it.original_name)}" loading="lazy">`:`<div class="doc-icon">📄</div>`}
     <span class="m-name" title="${esc(it.original_name)}">${esc(it.original_name)}</span>
     <span class="m-size">${fsize(it.size)} ${it.is_private?'· <span class="pill sm warn">Private</span>':''}</span>
-   </div>
-  `).join("")||`<p style="color:var(--muted);grid-column:1/-1;padding:3rem 0;text-align:center">No media found matching criteria.</p>`;
+   </div>`;
+ function renderGrid(items){
+  $("#lib_grid").innerHTML=items.map(cardHTML).join("")||`<p style="color:var(--muted);grid-column:1/-1;padding:3rem 0;text-align:center">No media found matching criteria.</p>`;
 
   $$("#lib_grid .media-card").forEach(el=>{
    el.onclick=()=>showMediaDetail(el.dataset.mname);
   });
+ }
+ function prependCard(it){
+  const g=$("#lib_grid"),empty=g.querySelector(":scope > p");if(empty)empty.remove();
+  g.insertAdjacentHTML("afterbegin",cardHTML(it));
+  const el=g.firstElementChild;el.onclick=()=>showMediaDetail(el.dataset.mname);
  }
  renderGrid(m.items);
 
@@ -1519,23 +1569,23 @@ VIEWS.media=async()=>{
  $("#lib_vis").onchange=filterMedia;
  $("#lib_sort").onchange=filterMedia;
 
- const handleFiles=guard(async files=>{
-  let ok=0, failed=[];
-  for(let i=0;i<files.length;i++){
-   const f=files[i];
-   toast(`Uploading ${i+1} of ${files.length}: ${f.name}`);
+ const handleFiles=guard(async fileList=>{
+  const files=[...fileList];let ok=0,failed=[];
+  const total=files.length;
+  toast(`Uploading ${total} file${total===1?"":"s"}…`);
+  await runPool(files,3,async f=>{
    try{
-    const fd=new FormData();fd.append("file",f);fd.append("private","0");
-    await api("/api/admin/upload","POST",fd);
+    const r=await uploadFile(f,false);
     ok++;
+    if(r.item)prependCard(r.item);
+    toast(`Uploaded ${ok} of ${total}: ${f.name}`);
    }catch(e){
-    failed.push(f.name);
+    failed.push(f.name+(e&&e.message?" ("+e.message+")":""));
    }
-  }
+  });
   if(failed.length===0)toast(`All ${ok} file${ok===1?"":"s"} uploaded successfully!`);
-  else if(ok===0)toast(`Upload failed for all ${failed.length} file(s): ${failed.join(", ")}`,true);
-  else toast(`${ok} uploaded, ${failed.length} failed: ${failed.join(", ")}`,true);
-  filterMedia();
+  else if(ok===0)toast(`Upload failed: ${failed.join("; ")}`,true);
+  else toast(`${ok} uploaded, ${failed.length} failed: ${failed.join("; ")}`,true);
  });
 
  $("#lib_up").onchange=e=>handleFiles(e.target.files);

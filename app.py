@@ -8,6 +8,7 @@ One small Python program that serves:
 """
 import base64, csv, datetime as dt, hashlib, hmac, io, json, mimetypes, os, re, secrets, shutil, sqlite3, ssl, threading, time, urllib.parse, zipfile
 from urllib.parse import urlparse
+import urllib.request, urllib.error
 
 # Auto-load .env file if present (local dev only)
 _env_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), ".env")
@@ -293,27 +294,66 @@ class PgConnectionWrapper:
 _pg_unreachable_until = 0
 
 
-def supabase_storage_upload(bucket: str, file_name: str, file_bytes: bytes, mime_type: str = "application/octet-stream") -> str:
-    """Uploads file_bytes directly to Supabase Storage via REST API. Returns public CDN URL or internal path."""
-    if not SUPABASE_URL or not SUPABASE_KEY:
-        return ""
-    base_url = SUPABASE_URL.rstrip("/")
-    url = f"{base_url}/storage/v1/object/{bucket}/{file_name}"
-    headers = {
-        "apikey": SUPABASE_KEY,
-        "Authorization": f"Bearer {SUPABASE_KEY}",
-        "Content-Type": mime_type,
-        "x-upsert": "true",
-    }
-    req = urllib.request.Request(url, data=file_bytes, headers=headers, method="POST")
+_storage_err = ""
+
+
+def _storage_call(method, path, payload=None, raw=None, headers_extra=None, timeout=15):
+    """Small helper for Supabase Storage REST calls. Returns (status, body_text)."""
+    base = SUPABASE_URL.rstrip("/")
+    headers = {"apikey": SUPABASE_KEY, "Authorization": f"Bearer {SUPABASE_KEY}"}
+    data = None
+    if payload is not None:
+        data = json.dumps(payload).encode("utf-8")
+        headers["Content-Type"] = "application/json"
+    elif raw is not None:
+        data = raw
+    if headers_extra:
+        headers.update(headers_extra)
+    req = urllib.request.Request(base + path, data=data, headers=headers, method=method)
     try:
-        with urllib.request.urlopen(req, timeout=15) as resp:
-            if resp.status in (200, 201):
-                if bucket == "public-media":
-                    return f"{base_url}/storage/v1/object/public/{bucket}/{file_name}"
-                return f"/api/private/file/{file_name}"
+        with urllib.request.urlopen(req, timeout=timeout) as r:
+            return r.status, r.read().decode("utf-8", "replace")
+    except urllib.error.HTTPError as e:
+        return e.code, e.read().decode("utf-8", "replace")
     except Exception as e:
-        print(f"[STORAGE] Upload to {bucket}/{file_name} failed: {e}", flush=True)
+        return 0, str(e)
+
+
+def supabase_storage_ensure_bucket(bucket: str, public: bool) -> str:
+    """Create the bucket if it is missing, or make sure its public flag is right."""
+    st, body = _storage_call("POST", "/storage/v1/bucket", payload={"id": bucket, "name": bucket, "public": public})
+    if st in (200, 201):
+        return "created"
+    low = body.lower()
+    if "already exists" in low or "duplicate" in low:
+        st2, body2 = _storage_call("PUT", f"/storage/v1/bucket/{bucket}", payload={"public": public})
+        return "exists" if st2 in (200, 201) else f"exists (could not update: {st2} {body2[:120]})"
+    return f"failed {st}: {body[:160]}"
+
+
+def supabase_storage_upload(bucket: str, file_name: str, file_bytes: bytes, mime_type: str = "application/octet-stream") -> str:
+    """Uploads file_bytes to Supabase Storage via REST. Returns the public URL (public bucket)
+    or an internal path (private bucket); returns "" on failure (reason kept in _storage_err).
+    If the bucket does not exist yet it is created and the upload retried once."""
+    global _storage_err
+    if not SUPABASE_URL or not SUPABASE_KEY:
+        _storage_err = "Supabase URL/key not configured"
+        return ""
+    path = f"/storage/v1/object/{bucket}/{file_name}"
+    for attempt in (1, 2):
+        st, body = _storage_call("POST", path, raw=file_bytes,
+                                 headers_extra={"Content-Type": mime_type, "x-upsert": "true"}, timeout=15)
+        if st in (200, 201):
+            _storage_err = ""
+            if bucket == "public-media":
+                return f"{SUPABASE_URL.rstrip('/')}/storage/v1/object/public/{bucket}/{file_name}"
+            return f"/api/private/file/{file_name}"
+        _storage_err = f"{st}: {body[:200]}"
+        print(f"[STORAGE] Upload to {bucket}/{file_name} failed: {_storage_err}", flush=True)
+        if attempt == 1 and st in (400, 404) and "bucket" in body.lower() and "not found" in body.lower():
+            print(f"[STORAGE] Creating missing bucket {bucket}: {supabase_storage_ensure_bucket(bucket, bucket == 'public-media')}", flush=True)
+            continue
+        break
     return ""
 
 
@@ -947,7 +987,13 @@ def upload():
     ex("INSERT OR REPLACE INTO media(name, original_name, ext, size, is_private, created, content_b64, storage_url, storage_bucket) VALUES(?,?,?,?,?,?,?,?,?)",
        name, orig_name, ext, size, 1 if private else 0, now(), content_b64, storage_url, bucket)
     log("File uploaded", orig_name, "archive" if private else "portfolio")
-    return jsonify(url=(f"/api/private/file/{name}" if private else f"/uploads/{name}"), name=orig_name, size=size)
+    url = f"/api/private/file/{name}" if private else f"/uploads/{name}"
+    item = {"name": name, "original_name": orig_name, "ext": ext, "size": size,
+            "is_private": private, "url": url,
+            "thumb": storage_url if (storage_url and not private) else url}
+    return jsonify(url=url, name=orig_name, size=size, item=item,
+                   stored_in="storage" if storage_url else "database",
+                   storage_error="" if storage_url else _storage_err)
 
 
 NAME_RE = re.compile(r"^[a-f0-9]{32}\.[a-z0-9]{2,5}$")
@@ -964,29 +1010,26 @@ def public_file(name):
     static_upload = os.path.join(STATIC_UPLOADS, name)
     if os.path.exists(static_upload):
         return send_from_directory(STATIC_UPLOADS, name, max_age=2592000)
-    row = q1("SELECT original_name, ext, content_b64, storage_url FROM media WHERE name=? AND is_private=0", name)
+    row = q1("SELECT original_name, ext, storage_url FROM media WHERE name=? AND is_private=0", name)
     if not row:
         abort(404)
     if row.get("storage_url"):
-        return redirect(row["storage_url"], 302)
-    if SUPABASE_URL:
-        return redirect(f"{SUPABASE_URL.rstrip('/')}/storage/v1/object/public/public-media/{name}", 302)
-    if row.get("content_b64"):
+        resp = redirect(row["storage_url"], 302)
+        resp.headers["Cache-Control"] = "public, max-age=86400"
+        return resp
+    # No Storage copy: the file lives in the database (fallback), so serve it from there.
+    full = q1("SELECT content_b64 FROM media WHERE name=?", name)
+    if full and full.get("content_b64"):
         try:
-            raw_bytes = base64.b64decode(row["content_b64"])
-            if not IS_VERCEL:
-                try:
-                    os.makedirs(UP_PUB, exist_ok=True)
-                    with open(os.path.join(UP_PUB, name), "wb") as f:
-                        f.write(raw_bytes)
-                except OSError:
-                    pass
+            raw_bytes = base64.b64decode(full["content_b64"])
             mime = mimetypes.guess_type(name)[0] or "application/octet-stream"
             resp = Response(raw_bytes, mimetype=mime)
             resp.headers["Cache-Control"] = "public, max-age=2592000"
             return resp
         except Exception:
             pass
+    if SUPABASE_URL:
+        return redirect(f"{SUPABASE_URL.rstrip('/')}/storage/v1/object/public/public-media/{name}", 302)
     abort(404)
 
 
@@ -999,7 +1042,7 @@ def media_list():
     vis = request.args.get("visibility", "all")
     sort = request.args.get("sort", "newest")
 
-    sql = "SELECT * FROM media WHERE 1=1"
+    sql = "SELECT id, name, original_name, title, caption, alt, project, pos, ext, size, is_private, created, storage_url FROM media WHERE 1=1"
     params = []
     if q:
         sql += " AND (LOWER(original_name) LIKE ? OR LOWER(name) LIKE ?)"
@@ -1038,7 +1081,9 @@ def media_list():
             "size": r["size"],
             "is_private": bool(r["is_private"]),
             "created": r["created"],
-            "url": f"/api/private/file/{r['name']}" if r["is_private"] else f"/uploads/{r['name']}"
+            "url": f"/api/private/file/{r['name']}" if r["is_private"] else f"/uploads/{r['name']}",
+            "thumb": (r.get("storage_url") if (r.get("storage_url") and not r["is_private"]) else
+                      (f"/api/private/file/{r['name']}" if r["is_private"] else f"/uploads/{r['name']}"))
         })
     return jsonify(items=items)
 
@@ -1540,7 +1585,7 @@ def private_file(name):
         resp.headers["Cache-Control"] = "private, no-store"
         return resp
 
-    if SUPABASE_URL and SUPABASE_KEY:
+    if SUPABASE_URL and SUPABASE_KEY and row and row.get("storage_url"):
         signed_url = supabase_storage_sign_url("private-archive", name, expires_in=3600)
         if signed_url:
             return redirect(signed_url, 302)
@@ -2318,6 +2363,59 @@ def bootstrap_admin_0hIOtUC9():
     c.close()
     result["sequences_fixed"] = seq_fixed
     return jsonify(ok=True, **result)
+
+
+@app.get("/api/storage-check-0hIOtUC9")
+def storage_check_0hIOtUC9():
+    # TEMPORARY diagnostic/repair endpoint (remove after use): reports Supabase Storage
+    # config, makes sure both buckets exist with the right public flag, does a tiny test
+    # upload, and moves any old database-only images into Storage. Never prints secrets.
+    if request.args.get("key") != "0hIOtUC9tEJLkXsG5_9hwXMoRuA":
+        abort(404)
+    out = {"has_supabase_url": bool(SUPABASE_URL), "has_supabase_key": bool(SUPABASE_KEY)}
+    if not (SUPABASE_URL and SUPABASE_KEY):
+        return jsonify(out)
+    try:
+        payload = SUPABASE_KEY.split(".")[1]
+        payload += "=" * (-len(payload) % 4)
+        out["key_role"] = json.loads(base64.urlsafe_b64decode(payload)).get("role", "unknown")
+    except Exception:
+        out["key_role"] = "not a JWT (new-style key?)"
+    st, body = _storage_call("GET", "/storage/v1/bucket")
+    try:
+        out["buckets_before"] = [{"name": b.get("name"), "public": b.get("public")} for b in json.loads(body)] if st == 200 else f"{st}: {body[:160]}"
+    except Exception:
+        out["buckets_before"] = f"{st}: {body[:160]}"
+    out["ensure_public_media"] = supabase_storage_ensure_bucket("public-media", True)
+    out["ensure_private_archive"] = supabase_storage_ensure_bucket("private-archive", False)
+    png = base64.b64decode("iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==")
+    tname = "storage-check-" + secrets.token_hex(4) + ".png"
+    url = supabase_storage_upload("public-media", tname, png, "image/png")
+    out["test_upload"] = "ok" if url else f"failed: {_storage_err}"
+    if url:
+        try:
+            with urllib.request.urlopen(url, timeout=10) as r:
+                out["test_public_url_status"] = r.status
+        except urllib.error.HTTPError as e:
+            out["test_public_url_status"] = e.code
+        except Exception as e:
+            out["test_public_url_status"] = str(e)[:100]
+        _storage_call("DELETE", f"/storage/v1/object/public-media/{tname}")
+    moved = []
+    for r in qa("SELECT name, ext, is_private, storage_url FROM media WHERE (storage_url IS NULL OR storage_url='') AND content_b64 IS NOT NULL AND content_b64<>'' LIMIT 10"):
+        full = q1("SELECT content_b64 FROM media WHERE name=?", r["name"])
+        try:
+            raw = base64.b64decode(full["content_b64"])
+        except Exception:
+            continue
+        priv = bool(r["is_private"])
+        u2 = supabase_storage_upload("private-archive" if priv else "public-media", r["name"], raw,
+                                     mimetypes.guess_type(r["name"])[0] or "application/octet-stream")
+        if u2:
+            ex("UPDATE media SET storage_url=?, content_b64='' WHERE name=?", u2, r["name"])
+            moved.append(r["name"][:8])
+    out["moved_to_storage"] = moved
+    return jsonify(out)
 
 
 PUBLIC_ROUTES = {"about", "journey", "work", "projects", "achievements", "blog", "contact"}
