@@ -232,6 +232,61 @@ details.block .bd p+p{margin-top:.9rem}
 .path{color:var(--muted);font-size:.98rem;max-width:none}
 .soon{font-size:.78rem;border:1px dashed var(--accent);color:var(--atext);border-radius:999px;padding:.05rem .7rem}
 @media(max-width:520px){.areas{grid-template-columns:1fr}}
+
+/* ---------- hover effects: mouse / trackpad only (touch screens skip these) ---------- */
+@media (hover:hover) and (pointer:fine){
+ nav.main a{transition:color .25s ease,background .25s ease,transform .15s ease}
+ nav.main a:not([aria-current=page]):hover{background:color-mix(in srgb,var(--ink) 9%,transparent)}
+ .brand{transition:color .25s ease}
+ .brand:hover{color:var(--atext)}
+
+ .card::after{content:"";position:absolute;inset:-8px;border-radius:18px;pointer-events:none;opacity:0;transition:opacity .35s ease;
+  background:radial-gradient(340px circle at var(--mx,50%) var(--my,50%),color-mix(in srgb,var(--accent) 17%,transparent),transparent 65%)}
+ .card:hover::after{opacity:1}
+ .card .im,.card .ph{transition:transform .5s cubic-bezier(.2,.8,.2,1),box-shadow .4s ease,filter .4s ease}
+ .card:hover .im,.card:hover .ph{box-shadow:0 18px 40px rgba(0,0,0,.35);filter:saturate(1.08) brightness(1.05)}
+ .card h3{transition:color .25s ease}
+ .card:hover h3{color:var(--atext)}
+ .card:hover .link{background:color-mix(in srgb,var(--accent) 26%,transparent)}
+ .card:hover .link:hover{background:var(--accent);color:var(--on)}
+
+ .chip{transition:background .25s ease,border-color .25s ease,color .25s ease,transform .2s ease}
+ .chip:hover{border-color:var(--accent);background:color-mix(in srgb,var(--accent) 13%,transparent)}
+ .chip[aria-pressed=true]:hover{background:var(--accent)}
+
+ .btn{transition:transform .25s ease,background .25s ease,box-shadow .3s ease,filter .25s ease}
+ .btn:hover{box-shadow:0 10px 26px color-mix(in srgb,var(--accent) 32%,transparent)}
+ .btn.solid:hover{filter:brightness(1.08)}
+ .btn.ghost:hover{background:color-mix(in srgb,var(--accent) 14%,transparent)}
+ .link,.ms button{transition:background .2s ease,color .2s ease,transform .2s ease,box-shadow .25s ease}
+ .link:hover,.ms button:hover{box-shadow:0 8px 20px color-mix(in srgb,var(--accent) 30%,transparent)}
+
+ .pillars>div{transition:transform .35s cubic-bezier(.2,.8,.2,1),box-shadow .35s ease}
+ .pillars>div h3{transition:color .25s ease}
+ .pillars>div:hover{box-shadow:inset 0 2px 0 var(--accent),0 14px 28px rgba(0,0,0,.16)}
+ .pillars>div:hover h3{color:var(--atext)}
+
+ .ms::before{transition:transform .3s cubic-bezier(.2,.8,.2,1),box-shadow .3s ease}
+ .ms:hover::before{box-shadow:0 0 0 5px var(--bg),0 0 18px 3px color-mix(in srgb,var(--accent) 55%,transparent)}
+ .ms h3{transition:color .25s ease}
+ .ms:hover h3{color:var(--atext)}
+
+ footer a{background:linear-gradient(currentColor,currentColor) 0 100%/0 1px no-repeat;transition:background-size .3s ease,color .25s ease}
+ footer a:hover{background-size:100% 1px;color:var(--ink)}
+ summary{transition:opacity .2s ease}
+ summary:hover{opacity:.8}
+
+ @media (prefers-reduced-motion:no-preference){
+  .card{transition:transform .4s cubic-bezier(.2,.8,.2,1)}
+  .card:hover{transform:translateY(-6px)}
+  .card:hover .im,.card:hover .ph{transform:scale(1.03)}
+  .chip:hover{transform:translateY(-2px)}
+  .btn:hover{transform:translateY(-3px)}
+  .link:hover,.ms button:hover{transform:translateY(-2px)}
+  .pillars>div:hover{transform:translateY(-4px)}
+  .ms:hover::before{transform:scale(1.35)}
+ }
+}
 </style>
 </head>
 <body>
@@ -623,6 +678,17 @@ function positionNavIndicator(){
  ind.style.transform=`translateX(${cr.left-nr.left-3}px)`;
 }
 window.addEventListener("resize",positionNavIndicator);
+/* cursor spotlight on cards (mouse only): the soft glow follows the pointer */
+if(matchMedia("(hover:hover) and (pointer:fine)").matches&&!matchMedia("(prefers-reduced-motion:reduce)").matches){
+ let raf=0;
+ document.addEventListener("pointermove",e=>{
+  const c=e.target.closest&&e.target.closest(".card");
+  if(!c||raf)return;
+  raf=requestAnimationFrame(()=>{raf=0;const r=c.getBoundingClientRect();
+   c.style.setProperty("--mx",(e.clientX-r.left+8)+"px");c.style.setProperty("--my",(e.clientY-r.top+8)+"px")});
+ },{passive:true});
+}
+
 $("#nav").addEventListener("scroll",positionNavIndicator,{passive:true});
 document.addEventListener("pointerdown",e=>{
  if(e.target.closest("a[data-l], .btn, .link, nav.main a, button, summary, .card"))haptic();
