@@ -945,6 +945,25 @@ def is_image(head, ext):
             or (ext == "gif" and head[:4] == b"GIF8") or (ext == "webp" and head[:4] == b"RIFF" and head[8:12] == b"WEBP"))
 
 
+def _record_media(name, orig_name, ext, size, private, storage_url, bucket, content_b64=""):
+    ex("INSERT OR REPLACE INTO media(name, original_name, ext, size, is_private, created, content_b64, storage_url, storage_bucket) VALUES(?,?,?,?,?,?,?,?,?)",
+       name, orig_name, ext, size, 1 if private else 0, now(), content_b64, storage_url, bucket)
+    log("File uploaded", orig_name, "archive" if private else "portfolio")
+    url = f"/api/private/file/{name}" if private else f"/uploads/{name}"
+    return {"name": name, "original_name": orig_name, "ext": ext, "size": size,
+            "is_private": private, "url": url,
+            "thumb": storage_url if (storage_url and not private) else url}
+
+
+def _check_upload_type(filename, private):
+    ext = filename.rsplit(".", 1)[-1].lower() if "." in filename else ""
+    if ext in IMG_EXT:
+        return ext
+    if ext in DOC_EXT and private:
+        return ext
+    raise ValueError("This file type isn't allowed. Images (jpg, png, webp, gif) are allowed everywhere; documents (pdf, docx, xlsx, txt, csv, pptx) only in the private archive.")
+
+
 @app.post("/api/admin/upload")
 @owner_only
 def upload():
@@ -952,15 +971,11 @@ def upload():
     if not f or not f.filename:
         raise ValueError("Choose a file first.")
     private = request.form.get("private") == "1"
-    ext = f.filename.rsplit(".", 1)[-1].lower() if "." in f.filename else ""
+    ext = _check_upload_type(f.filename, private)
     if ext in IMG_EXT:
         if not is_image(f.stream.read(16), ext):
             raise ValueError("That file doesn't look like a real image.")
         f.stream.seek(0)
-    elif ext in DOC_EXT and private:
-        pass
-    else:
-        raise ValueError("This file type isn't allowed. Images (jpg, png, webp, gif) are allowed everywhere; documents (pdf, docx, xlsx, txt, csv, pptx) only in the private archive.")
     name = secrets.token_hex(16) + "." + ext
     orig_name = f.filename[:120]
     raw_bytes = f.read()
@@ -984,16 +999,65 @@ def upload():
                 df.write(raw_bytes)
         except OSError:
             pass
-    ex("INSERT OR REPLACE INTO media(name, original_name, ext, size, is_private, created, content_b64, storage_url, storage_bucket) VALUES(?,?,?,?,?,?,?,?,?)",
-       name, orig_name, ext, size, 1 if private else 0, now(), content_b64, storage_url, bucket)
-    log("File uploaded", orig_name, "archive" if private else "portfolio")
-    url = f"/api/private/file/{name}" if private else f"/uploads/{name}"
-    item = {"name": name, "original_name": orig_name, "ext": ext, "size": size,
-            "is_private": private, "url": url,
-            "thumb": storage_url if (storage_url and not private) else url}
-    return jsonify(url=url, name=orig_name, size=size, item=item,
+    item = _record_media(name, orig_name, ext, size, private, storage_url, bucket, content_b64)
+    return jsonify(url=item["url"], name=orig_name, size=size, item=item,
                    stored_in="storage" if storage_url else "database",
                    storage_error="" if storage_url else _storage_err)
+
+
+@app.post("/api/admin/upload-sign")
+@owner_only
+def upload_sign():
+    # Step 1 of a direct-to-Storage upload: the browser sends the file's bytes
+    # straight to Supabase, bypassing this server (and Vercel's hard 4.5MB
+    # request-body limit) entirely, so full-quality photos no longer need to
+    # be compressed client-side to fit through this function.
+    if not (SUPABASE_URL and SUPABASE_KEY):
+        raise ValueError("Direct upload isn't available (Supabase Storage isn't configured).")
+    j = request.get_json(silent=True) or {}
+    filename = str(j.get("filename", ""))[:200]
+    private = bool(j.get("private"))
+    if not filename:
+        raise ValueError("Missing filename.")
+    ext = _check_upload_type(filename, private)
+    name = secrets.token_hex(16) + "." + ext
+    bucket = "private-archive" if private else "public-media"
+    st, body = _storage_call("POST", f"/storage/v1/object/upload/sign/{bucket}/{name}", payload={})
+    if st not in (200, 201):
+        if st in (400, 404) and "bucket" in body.lower() and "not found" in body.lower():
+            supabase_storage_ensure_bucket(bucket, bucket == "public-media")
+            st, body = _storage_call("POST", f"/storage/v1/object/upload/sign/{bucket}/{name}", payload={})
+        if st not in (200, 201):
+            raise ValueError(f"Could not prepare the upload: {body[:200]}")
+    try:
+        data = json.loads(body)
+    except Exception:
+        raise ValueError("Unexpected response preparing the upload.")
+    signed_path = data.get("url") or f"/object/upload/sign/{bucket}/{name}?token={data.get('token', '')}"
+    put_url = f"{SUPABASE_URL.rstrip('/')}/storage/v1{signed_path}"
+    return jsonify(name=name, ext=ext, bucket=bucket, put_url=put_url)
+
+
+@app.post("/api/admin/upload-commit")
+@owner_only
+def upload_commit():
+    # Step 2: the browser already PUT the bytes straight to Supabase using the
+    # signed URL from upload-sign; this just records the database row.
+    j = request.get_json(silent=True) or {}
+    name = str(j.get("name", ""))
+    if not re.match(r"^[a-f0-9]{32}\.[a-z0-9]{2,5}$", name):
+        raise ValueError("Invalid file reference.")
+    orig_name = str(j.get("original_name", name))[:120]
+    ext = name.rsplit(".", 1)[-1].lower()
+    private = bool(j.get("private"))
+    size = int(j.get("size") or 0)
+    bucket = "private-archive" if private else "public-media"
+    if bucket == "public-media":
+        storage_url = f"{SUPABASE_URL.rstrip('/')}/storage/v1/object/public/{bucket}/{name}"
+    else:
+        storage_url = f"/api/private/file/{name}"
+    item = _record_media(name, orig_name, ext, size, private, storage_url, bucket)
+    return jsonify(url=item["url"], name=orig_name, size=size, item=item, stored_in="storage")
 
 
 NAME_RE = re.compile(r"^[a-f0-9]{32}\.[a-z0-9]{2,5}$")

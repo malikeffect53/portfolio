@@ -261,8 +261,8 @@ async function api(path,method="GET",body){
 function toast(m,err){const d=document.createElement("div");d.className="toast"+(err?" err":"");d.textContent=m;document.body.append(d);setTimeout(()=>d.remove(),3200)}
 const guard=fn=>async(...a)=>{try{return await fn(...a)}catch(e){toast(e.message,true)}};
 
-/* ---------- uploads: shrink big photos in the browser, send a few at a time ---------- */
-const MAX_UPLOAD_BYTES=4.3*1024*1024; /* Vercel functions reject request bodies over ~4.5 MB */
+/* ---------- uploads: send straight to Supabase Storage so full quality is kept ---------- */
+const MAX_UPLOAD_BYTES=4.3*1024*1024; /* fallback path only: Vercel functions reject request bodies over ~4.5 MB */
 async function prepImage(f){
  const ext=(f.name.split(".").pop()||"").toLowerCase();
  if(!["jpg","jpeg","png","webp"].includes(ext))return f;
@@ -287,11 +287,22 @@ async function prepImage(f){
   return(blob.size<f.size||scale<1)?new File([blob],name,{type}):f;
  }catch(e){return f}
 }
-async function uploadFile(f,priv){
+async function uploadFileFallback(f,priv){
  f=await prepImage(f);
- if(f.size>MAX_UPLOAD_BYTES)throw new Error(`${f.name} is too large (${(f.size/1048576).toFixed(1)} MB). The server accepts up to about 4 MB per file, so please use a smaller version.`);
+ if(f.size>MAX_UPLOAD_BYTES)throw new Error(`${f.name} is too large (${(f.size/1048576).toFixed(1)} MB) to upload right now.`);
  const fd=new FormData();fd.append("file",f);fd.append("private",priv?"1":"0");
  return api("/api/admin/upload","POST",fd);
+}
+async function uploadFile(f,priv){
+ let sign;
+ try{
+  sign=await api("/api/admin/upload-sign","POST",{filename:f.name,private:!!priv});
+ }catch(e){
+  return uploadFileFallback(f,priv); /* Storage not configured/reachable: fall back to the old path */
+ }
+ const put=await fetch(sign.put_url,{method:"PUT",headers:{"Content-Type":f.type||"application/octet-stream"},body:f});
+ if(!put.ok)throw new Error(`${f.name} failed to upload (${put.status}).`);
+ return api("/api/admin/upload-commit","POST",{name:sign.name,original_name:f.name,ext:sign.ext,size:f.size,private:!!priv});
 }
 async function runPool(list,limit,worker){
  let i=0;
